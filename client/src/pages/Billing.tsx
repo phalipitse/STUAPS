@@ -2,16 +2,12 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../lib/api";
+import { isLocked, trialDaysLeft } from "../lib/subscription";
 
 type Plan = "monthly" | "annual";
 
 const MONTHLY_PRICE = 750;
 const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * 12 * 0.9); // 12 x R750, less 10% = R8,100
-
-function daysUntil(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-}
 
 function formatRand(amount: number) {
   return `R${amount.toLocaleString("en-ZA")}`;
@@ -25,7 +21,8 @@ export function Billing() {
   const [loading, setLoading] = useState<"checkout" | "portal" | null>(null);
 
   const checkoutResult = searchParams.get("checkout");
-  const trialDaysLeft = tenant ? daysUntil(tenant.trialEndsAt) : null;
+  const daysLeft = trialDaysLeft(tenant);
+  const locked = isLocked(tenant) && checkoutResult !== "success";
 
   async function startCheckout() {
     setError(null);
@@ -55,7 +52,11 @@ export function Billing() {
 
   return (
     <div className="page">
-      <h1>Billing</h1>
+      {locked ? (
+        <h1 className="lock-heading">Make a payment to continue with Stuaps.</h1>
+      ) : (
+        <h1>Billing</h1>
+      )}
 
       {checkoutResult === "success" && (
         <p className="muted">
@@ -64,33 +65,35 @@ export function Billing() {
       )}
       {checkoutResult === "cancelled" && <p className="muted">Checkout cancelled.</p>}
 
-      <div className="kpi-row">
-        <div className="kpi-tile">
-          <span className="kpi-label">Status</span>
-          <span className="kpi-value">
-            <span className={`status-pill status-${tenant?.subscriptionStatus}`}>
-              {tenant?.subscriptionStatus}
-            </span>
-          </span>
-        </div>
-        {tenant?.subscriptionStatus === "trial" && (
+      {!locked && (
+        <div className="kpi-row">
           <div className="kpi-tile">
-            <span className="kpi-label">Trial ends</span>
+            <span className="kpi-label">Status</span>
             <span className="kpi-value">
-              {trialDaysLeft !== null && trialDaysLeft >= 0 ? `${trialDaysLeft} day(s)` : "Ended"}
+              <span className={`status-pill status-${tenant?.subscriptionStatus}`}>
+                {tenant?.subscriptionStatus}
+              </span>
             </span>
           </div>
-        )}
-      </div>
+          {tenant?.subscriptionStatus === "trial" && (
+            <div className="kpi-tile">
+              <span className="kpi-label">Trial ends</span>
+              <span className="kpi-value">
+                {daysLeft !== null && daysLeft >= 0 ? `${daysLeft} day(s)` : "Ended"}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
-      {(tenant?.subscriptionStatus === "trial" || tenant?.subscriptionStatus === "cancelled") && (
+      {!locked && (tenant?.subscriptionStatus === "trial" || tenant?.subscriptionStatus === "cancelled") && (
         <p className="muted">
           {tenant.subscriptionStatus === "trial"
             ? "Subscribe now to keep access after your trial ends."
             : "Your subscription is cancelled. Subscribe again to regain access."}
         </p>
       )}
-      {tenant?.subscriptionStatus === "past_due" && (
+      {!locked && tenant?.subscriptionStatus === "past_due" && (
         <p className="error">
           Your last payment failed. Update your payment method to avoid losing access.
         </p>
@@ -132,9 +135,11 @@ export function Billing() {
               : `Upgrade now — ${plan === "monthly" ? formatRand(MONTHLY_PRICE) + "/month" : formatRand(ANNUAL_PRICE) + "/year"}`}
           </button>
         )}
-        <button onClick={openPortal} disabled={loading !== null}>
-          {loading === "portal" ? "Opening…" : "Manage billing"}
-        </button>
+        {(!locked || tenant?.subscriptionStatus === "past_due") && (
+          <button onClick={openPortal} disabled={loading !== null}>
+            {loading === "portal" ? "Opening…" : "Manage billing"}
+          </button>
+        )}
       </div>
     </div>
   );

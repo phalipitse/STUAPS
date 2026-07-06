@@ -318,6 +318,22 @@ button {
   margin-top: 0;
 }
 
+.page-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-heading-row h1 {
+  margin: 0;
+}
+
+.lock-heading {
+  color: var(--color-outstanding-text);
+}
+
 /* KPI tiles */
 
 .kpi-row {
@@ -569,4 +585,61 @@ button {
 .plan-period {
   color: var(--color-muted);
   font-size: 0.85em;
+}
+
+/* Print */
+
+@media print {
+  .no-print,
+  .app-header,
+  .trial-banner,
+  .inline-form {
+    display: none !important;
+  }
+
+  body,
+  .app-shell,
+  .app-content,
+  .page {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .kpi-tile {
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .kpi-outstanding .kpi-value {
+    color: #000 !important;
+  }
+
+  .table-scroll {
+    overflow: visible !important;
+    background: none !important;
+  }
+
+  .data-table {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+
+  .data-table th,
+  .data-table td {
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+
+  .data-table tr.row-outstanding,
+  .data-table tr.row-fee {
+    background: none !important;
+    color: #000 !important;
+  }
+
+  .status-pill {
+    border: 1px solid #000;
+    background: none !important;
+    color: #000 !important;
+  }
 }

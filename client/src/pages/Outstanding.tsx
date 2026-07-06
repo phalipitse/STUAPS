@@ -31,7 +31,12 @@ export function Outstanding() {
 
   return (
     <div className="page">
-      <h1>Who owes what</h1>
+      <div className="page-heading-row">
+        <h1>Who owes what</h1>
+        <button className="no-print" onClick={() => window.print()}>
+          Print recon
+        </button>
+      </div>
       <p className="muted">
         {rows.length} student(s) outstanding — {formatRand(grandTotal)} total.
       </p>

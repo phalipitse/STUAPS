@@ -49,7 +49,12 @@ export function Dashboard() {
 
   return (
     <div className="page">
-      <h1>Dashboard</h1>
+      <div className="page-heading-row">
+        <h1>Dashboard</h1>
+        <button className="no-print" onClick={() => window.print()}>
+          Print report
+        </button>
+      </div>
 
       <div className="kpi-row">
         <div className="kpi-tile">

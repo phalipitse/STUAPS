@@ -74,7 +74,12 @@ export function InvoiceDetail() {
 
   return (
     <div className="page">
-      <h1>{invoice.invoiceNumber}</h1>
+      <div className="page-heading-row">
+        <h1>{invoice.invoiceNumber}</h1>
+        <button className="no-print" onClick={() => window.print()}>
+          Print recon
+        </button>
+      </div>
       <p className="muted">
         {invoice.invoiceDate} — <span className={`status-pill status-${invoice.status}`}>{invoice.status}</span>
       </p>
