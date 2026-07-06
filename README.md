@@ -116,3 +116,4 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
   credentials — verify with a real API key before relying on them in production.
 - **Forgot username** specifically isn't handled (only password reset) — a user who
   forgot their username but has their email can't currently recover it that way.
+
