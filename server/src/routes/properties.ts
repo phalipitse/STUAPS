@@ -5,10 +5,11 @@ import { db } from "../db/index.js";
 import { properties } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { assertInstitutionAccessible, ForbiddenError } from "../lib/tenantScope.js";
 
 export const propertiesRouter = Router();
-propertiesRouter.use(requireAuth);
+propertiesRouter.use(requireAuth, requireActiveSubscription);
 
 propertiesRouter.get("/", async (req, res, next) => {
   try {

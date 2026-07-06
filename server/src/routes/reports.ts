@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { invoices, invoiceLineItems, students } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { assertInstitutionAccessible, ForbiddenError } from "../lib/tenantScope.js";
 import {
   summarizeInvoice,
@@ -13,7 +14,7 @@ import {
 } from "../lib/recon.js";
 
 export const reportsRouter = Router();
-reportsRouter.use(requireAuth);
+reportsRouter.use(requireAuth, requireActiveSubscription);
 
 async function loadInstitutionData(institutionId: number) {
   const institutionInvoices = await db

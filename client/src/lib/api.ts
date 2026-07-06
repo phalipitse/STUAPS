@@ -20,11 +20,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     let message = res.statusText;
+    let code: string | undefined;
     try {
       const body = await res.json();
       message = body.error ?? message;
+      code = body.code;
     } catch {
       // no JSON body
+    }
+    if (code === "SUBSCRIPTION_REQUIRED" && window.location.pathname !== "/billing") {
+      window.location.href = "/billing";
     }
     throw new ApiError(message, res.status);
   }

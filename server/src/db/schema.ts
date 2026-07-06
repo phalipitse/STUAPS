@@ -45,6 +45,8 @@ export const tenants = pgTable("tenants", {
     .notNull()
     .default("trial"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
   isSuperAdminTenant: boolean("is_super_admin_tenant").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -5,10 +5,11 @@ import { db } from "../db/index.js";
 import { institutions } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { getStaffInstitutionScope } from "../lib/tenantScope.js";
 
 export const institutionsRouter = Router();
-institutionsRouter.use(requireAuth);
+institutionsRouter.use(requireAuth, requireActiveSubscription);
 
 institutionsRouter.get("/", async (req, res) => {
   const scope =

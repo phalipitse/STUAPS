@@ -5,10 +5,11 @@ import { db } from "../db/index.js";
 import { students } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { assertInstitutionAccessible, ForbiddenError } from "../lib/tenantScope.js";
 
 export const studentsRouter = Router();
-studentsRouter.use(requireAuth);
+studentsRouter.use(requireAuth, requireActiveSubscription);
 
 studentsRouter.get("/", async (req, res, next) => {
   try {

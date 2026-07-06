@@ -170,6 +170,17 @@ button {
   font-weight: 600;
 }
 
+.trial-banner-urgent {
+  background: var(--color-outstanding-bg);
+  color: var(--color-outstanding-text);
+}
+
+.trial-banner a {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 700;
+}
+
 .app-header {
   display: flex;
   align-items: center;

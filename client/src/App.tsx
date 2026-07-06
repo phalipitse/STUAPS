@@ -14,6 +14,7 @@ import { Students } from "./pages/Students";
 import { Outstanding } from "./pages/Outstanding";
 import { Admin } from "./pages/Admin";
 import { Team } from "./pages/Team";
+import { Billing } from "./pages/Billing";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ export function App() {
         <Route path="outstanding" element={<Outstanding />} />
         <Route path="admin" element={<Admin />} />
         <Route path="team" element={<Team />} />
+        <Route path="billing" element={<Billing />} />
       </Route>
     </Routes>
   );

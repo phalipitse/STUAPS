@@ -67,6 +67,41 @@ and `api/[...all].ts` wraps the whole Express app as one serverless function
    `/api/*` routed to the serverless function and everything else falling back to
    `index.html` (so client-side routes survive a hard refresh).
 
+## Setting up billing (Stripe)
+
+Without `STRIPE_SECRET_KEY` configured, the billing routes (`/api/billing/*`) fail
+cleanly with a 500 — everything else, including the 7-day trial itself, works fine.
+To turn on real paywalling:
+
+1. Create a Stripe account and, in test mode, a Product + recurring Price (R750/month
+   in this build's default copy — change the price/copy in `client/src/pages/Billing.tsx`
+   if yours differs).
+2. Set `STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` (the Price's ID, `price_...`).
+3. Create a webhook endpoint in Stripe pointing at `<your-domain>/api/billing/webhook`,
+   listening for `checkout.session.completed`, `customer.subscription.updated`, and
+   `customer.subscription.deleted`. Set `STRIPE_WEBHOOK_SECRET` to its signing secret.
+4. That's it — `/billing` in the app lets a tenant admin start a Checkout session or
+   open the Stripe-hosted billing portal, and the webhook keeps `tenants.subscription_status`
+   in sync (`active` / `past_due` / `cancelled`).
+
+**Access is actually enforced**, not just displayed: once a tenant's trial ends and
+they haven't subscribed, every tenant-scoped API route (institutions, properties,
+students, invoices, reports, team) returns `402 SUBSCRIPTION_REQUIRED`, and the
+frontend auto-redirects to `/billing` on that response. Super-admins (Pits Marketing)
+bypass this regardless of their own tenant's billing state.
+
+## PWA / Google Play
+
+The client is an installable PWA (`vite-plugin-pwa`: manifest, service worker, icons
+in `client/public/icons/`) — this is a *shell-installable* PWA (installable, reload-
+resilient), not full offline read/write support, which is still out of scope (see
+below). This is also the prerequisite for putting the app on Google Play: the
+standard path is wrapping it as a **Trusted Web Activity** via
+[Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap) once it's deployed at a
+stable HTTPS URL, then uploading the resulting `.aab` through the Play Console. That
+needs a Google Play Developer account ($25 one-time) and, for signing, either
+Bubblewrap's own keystore generation or Google Play App Signing.
+
 ## OTP delivery in dev
 
 `SENDGRID_API_KEY` and `AFRICASTALKING_API_KEY` are unset by default, so registration
@@ -104,16 +139,24 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - Minimal super-admin panel (Pits Marketing): list all tenants, override subscription
   status.
 - Light/dark theming via CSS variables, larger base font size, dense table-first UI.
+- Stripe subscription billing: checkout, billing portal, webhook-driven status sync,
+  and a real server-side paywall (402 + auto-redirect) once a trial lapses unpaid.
+- Installable PWA (manifest, service worker, icons) — the shell only; see below.
 
 ## Deliberately deferred (flagged, not built)
 
-- **Payment collection** (Phase 3 in the original plan) — no billing/payment gateway
-  integration. `subscriptionStatus` can be set manually via the super-admin panel.
-- **PWA/offline support** — not implemented; the spec calls for it but it adds real
-  complexity (service worker caching strategy, offline write queue) that didn't fit
-  this pass. The app is a normal online SPA today.
+- **Full offline support** — the PWA is installable and reload-resilient, but there's
+  no offline read/write (queued writes, background sync) for the actual invoice/recon
+  data. That's a meaningfully bigger feature (conflict resolution for offline edits,
+  etc.) than the "installable app shell" done here.
+- **Actually publishing to Google Play** — the PWA groundwork is done, but wrapping it
+  as a Trusted Web Activity, signing it, and getting through Play Console review are
+  manual steps needing your own Google Play Developer account (see above).
 - **Real SendGrid/Africa's Talking sends** are wired up but untested against live
   credentials — verify with a real API key before relying on them in production.
 - **Forgot username** specifically isn't handled (only password reset) — a user who
   forgot their username but has their email can't currently recover it that way.
+- **Stripe integration is untested against live keys** — built and unit-verifiable
+  (lazy client init, status mapping, paywall enforcement), but the actual Checkout /
+  webhook round-trip needs your Stripe test-mode keys to exercise for real.
 

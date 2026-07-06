@@ -5,10 +5,11 @@ import { db } from "../db/index.js";
 import { users, institutions, userInstitutionAccess } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { hashPassword } from "../lib/auth.js";
 
 export const teamRouter = Router();
-teamRouter.use(requireAuth, requireRole("admin"));
+teamRouter.use(requireAuth, requireRole("admin"), requireActiveSubscription);
 
 /** Confirms every given institution ID belongs to the tenant, or throws a 400. */
 async function assertAllInstitutionsInTenant(institutionIds: number[], tenantId: number) {

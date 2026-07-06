@@ -13,6 +13,7 @@ import { invoicesRouter } from "./routes/invoices.js";
 import { reportsRouter } from "./routes/reports.js";
 import { adminRouter } from "./routes/admin.js";
 import { teamRouter } from "./routes/team.js";
+import { billingRouter, stripeWebhookHandler } from "./routes/billing.js";
 
 const PgSession = connectPgSimple(session);
 
@@ -29,6 +30,14 @@ export function createApp() {
       credentials: true,
     })
   );
+  // Stripe needs the exact raw request bytes to verify the webhook signature,
+  // so this must be registered before the global JSON body parser below.
+  app.post(
+    "/api/billing/webhook",
+    express.raw({ type: "application/json" }),
+    stripeWebhookHandler
+  );
+
   app.use(express.json());
 
   app.use(
@@ -57,6 +66,7 @@ export function createApp() {
   app.use("/api/reports", reportsRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/team", teamRouter);
+  app.use("/api/billing", billingRouter);
 
   // Centralized error handler — keeps ForbiddenError/CsvParseError messages
   // out of routes and off the client's back for anything unexpected.

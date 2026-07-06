@@ -6,12 +6,13 @@ import { db } from "../db/index.js";
 import { invoices, invoiceLineItems, students } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
+import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { assertInstitutionAccessible, ForbiddenError } from "../lib/tenantScope.js";
 import { parseInvoiceCsv, CsvParseError } from "../lib/csvParser.js";
 import { summarizeInvoice } from "../lib/recon.js";
 
 export const invoicesRouter = Router();
-invoicesRouter.use(requireAuth);
+invoicesRouter.use(requireAuth, requireActiveSubscription);
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 

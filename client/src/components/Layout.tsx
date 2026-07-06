@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useInstitutions } from "../institutions/InstitutionContext";
 
@@ -25,8 +25,16 @@ export function Layout() {
       {tenant?.subscriptionStatus === "trial" && (
         <div className="trial-banner">
           Your account is in trial mode
-          {trialDaysLeft !== null && trialDaysLeft >= 0 ? ` — ${trialDaysLeft} day(s) left` : ""}.
-          Complete payment to unlock full access.
+          {trialDaysLeft !== null && trialDaysLeft >= 0 ? ` — ${trialDaysLeft} day(s) left` : ""}.{" "}
+          <Link to="/billing">Subscribe now</Link> to keep access after your trial ends.
+        </div>
+      )}
+      {(tenant?.subscriptionStatus === "past_due" || tenant?.subscriptionStatus === "cancelled") && (
+        <div className="trial-banner trial-banner-urgent">
+          {tenant.subscriptionStatus === "past_due"
+            ? "Your last payment failed."
+            : "Your subscription is cancelled."}{" "}
+          <Link to="/billing">Fix billing</Link> to avoid losing access.
         </div>
       )}
 
@@ -57,6 +65,7 @@ export function Layout() {
           <NavLink to="/institutions">Institutions</NavLink>
           <NavLink to="/properties">Properties</NavLink>
           {user?.role === "admin" && <NavLink to="/team">Team</NavLink>}
+          {user?.role === "admin" && <NavLink to="/billing">Billing</NavLink>}
           {user?.isSuperAdmin && <NavLink to="/admin">Super Admin</NavLink>}
         </nav>
 
