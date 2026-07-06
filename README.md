@@ -39,6 +39,34 @@ The super-admin username/password default to `pitsadmin` / `change-me-in-product
 (see `server/.env.example` — override `SUPERADMIN_USERNAME` / `SUPERADMIN_PASSWORD`
 before running `seed` in anything beyond local dev).
 
+## Deploying to Vercel
+
+The app deploys as a single Vercel project: the client builds to static assets,
+and `api/[...all].ts` wraps the whole Express app as one serverless function
+(same-origin, so no CORS/env-var juggling between front and back end).
+
+1. You need a Postgres database reachable from the internet — Vercel's sandboxed
+   local Postgres isn't reachable from a deployment. [Neon](https://neon.tech) has
+   a free tier and is what Vercel's own "Storage" tab offers. Use the **pooled**
+   connection string (Neon's `-pooler` host) — serverless functions open a lot of
+   short-lived connections, and the pooled endpoint is built for that.
+2. In the Vercel project settings, set these environment variables:
+   - `DATABASE_URL` — the Neon (or other Postgres) connection string
+   - `SESSION_SECRET` — any long random string
+   - `SUPERADMIN_USERNAME` / `SUPERADMIN_PASSWORD` — for the initial seed
+   - `SENDGRID_API_KEY` / `SENDGRID_FROM_EMAIL` and/or `AFRICASTALKING_API_KEY` /
+     `AFRICASTALKING_USERNAME` — optional; without these, OTP codes are only
+     logged server-side (see below), which isn't usable by real users
+3. Run migrations and seed against that same `DATABASE_URL` once, from anywhere
+   that can reach it:
+   ```bash
+   DATABASE_URL=<your connection string> npm run db:migrate --workspace server
+   DATABASE_URL=<your connection string> npm run --workspace server seed
+   ```
+4. Deploy. The build runs `npm run build:client` and serves `client/dist`, with
+   `/api/*` routed to the serverless function and everything else falling back to
+   `index.html` (so client-side routes survive a hard refresh).
+
 ## OTP delivery in dev
 
 `SENDGRID_API_KEY` and `AFRICASTALKING_API_KEY` are unset by default, so registration

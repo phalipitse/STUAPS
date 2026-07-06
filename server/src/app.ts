@@ -21,7 +21,11 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173",
+      // In production the client and API are served from the same Vercel
+      // deployment (same origin), so reflecting the request's own origin is
+      // safe and avoids having to hardcode a URL we don't know until after
+      // the first deploy. In dev, lock it to the Vite dev server.
+      origin: process.env.CLIENT_ORIGIN ?? (process.env.NODE_ENV === "production" ? true : "http://localhost:5173"),
       credentials: true,
     })
   );
