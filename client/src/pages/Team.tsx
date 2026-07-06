@@ -70,6 +70,7 @@ export function Team() {
     <div className="page">
       <h1>Team</h1>
 
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -126,6 +127,7 @@ export function Team() {
           )}
         </tbody>
       </table>
+      </div>
 
       <h2>Add staff member</h2>
       <form className="inline-form" onSubmit={handleCreate}>

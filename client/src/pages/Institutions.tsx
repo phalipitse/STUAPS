@@ -28,6 +28,7 @@ export function Institutions() {
   return (
     <div className="page">
       <h1>Institutions</h1>
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -51,6 +52,7 @@ export function Institutions() {
           )}
         </tbody>
       </table>
+      </div>
 
       <h2>Add institution</h2>
       <form className="inline-form" onSubmit={handleSubmit}>

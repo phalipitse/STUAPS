@@ -107,6 +107,7 @@ export function InvoiceDetail() {
         </button>
       </div>
 
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -133,6 +134,7 @@ export function InvoiceDetail() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

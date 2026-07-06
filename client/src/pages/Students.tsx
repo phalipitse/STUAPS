@@ -27,6 +27,7 @@ export function Students() {
   return (
     <div className="page">
       <h1>Student roster & cross-invoice summary</h1>
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -60,6 +61,7 @@ export function Students() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

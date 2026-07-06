@@ -78,6 +78,16 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  /* Safety net: no single element (e.g. a <select> sizing to its longest
+     option) should be able to force page-wide horizontal scroll. Anything
+     that's intentionally wider than the viewport (tables) scrolls in its
+     own .table-scroll container instead. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -246,6 +256,11 @@ button {
   border-radius: 6px;
   background: var(--color-bg);
   color: var(--color-text);
+  /* A <select> otherwise sizes to its longest option text and, as a flex
+     item with the default min-width:auto, refuses to shrink below that --
+     forcing the whole header (and page) wider than the viewport on mobile. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .app-nav {
@@ -346,6 +361,28 @@ button {
 }
 
 /* Tables */
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1.5rem;
+  /* Hints that there's more to scroll when the table is wider than its box
+     (common on phones) -- a static right edge otherwise reads as content
+     being cut off rather than an intentional scroll area. */
+  background: linear-gradient(to right, var(--color-surface) 30%, transparent),
+    linear-gradient(to left, var(--color-surface) 30%, transparent) 100% 0,
+    linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent),
+    linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-color: var(--color-surface);
+  background-size: 24px 100%, 24px 100%, 8px 100%, 8px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+.table-scroll .data-table {
+  margin-bottom: 0;
+}
 
 .data-table {
   width: 100%;

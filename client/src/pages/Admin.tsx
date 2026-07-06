@@ -31,6 +31,7 @@ export function Admin() {
   return (
     <div className="page">
       <h1>Super Admin — all tenants</h1>
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -78,6 +79,7 @@ export function Admin() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

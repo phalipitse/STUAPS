@@ -63,6 +63,7 @@ export function Properties() {
   return (
     <div className="page">
       <h1>Properties</h1>
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -88,6 +89,7 @@ export function Properties() {
           )}
         </tbody>
       </table>
+      </div>
 
       <h2>Add property</h2>
       <form className="inline-form" onSubmit={handleSubmit}>

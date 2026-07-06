@@ -75,6 +75,7 @@ export function Dashboard() {
       </div>
 
       <h2>Invoices</h2>
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -112,6 +113,7 @@ export function Dashboard() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -70,6 +70,7 @@ export function Invoices() {
         </button>
       </form>
 
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -107,6 +108,7 @@ export function Invoices() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

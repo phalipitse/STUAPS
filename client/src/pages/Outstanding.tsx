@@ -35,6 +35,7 @@ export function Outstanding() {
       <p className="muted">
         {rows.length} student(s) outstanding — {formatRand(grandTotal)} total.
       </p>
+      <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -68,6 +69,7 @@ export function Outstanding() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
