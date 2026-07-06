@@ -67,23 +67,30 @@ and `api/[...all].ts` wraps the whole Express app as one serverless function
    `/api/*` routed to the serverless function and everything else falling back to
    `index.html` (so client-side routes survive a hard refresh).
 
-## Setting up billing (Stripe)
+## Setting up billing (Paystack)
 
-Without `STRIPE_SECRET_KEY` configured, the billing routes (`/api/billing/*`) fail
-cleanly with a 500 — everything else, including the 14-day trial itself, works fine.
-To turn on real paywalling:
+Without `PAYSTACK_SECRET_KEY` configured, the billing routes (`/api/billing/*`) fail
+cleanly — everything else, including the 14-day trial itself, works fine. To turn on
+real paywalling:
 
-1. Create a Stripe account and, in test mode, a Product with **two** recurring Prices:
+1. Create a [Paystack](https://dashboard.paystack.com) account (test mode is fine to
+   start) and, under **Products → Plans**, create **two** recurring Plans in ZAR:
    monthly (R750) and annual (R8,100 — 12 × R750 less 10%). Change the prices/copy in
-   `client/src/pages/Billing.tsx` if yours differ.
-2. Set `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_MONTHLY`, and `STRIPE_PRICE_ID_ANNUAL`
-   (each Price's ID, `price_...`).
-3. Create a webhook endpoint in Stripe pointing at `<your-domain>/api/billing/webhook`,
-   listening for `checkout.session.completed`, `customer.subscription.updated`, and
-   `customer.subscription.deleted`. Set `STRIPE_WEBHOOK_SECRET` to its signing secret.
-4. That's it — `/billing` in the app lets a tenant admin start a Checkout session or
-   open the Stripe-hosted billing portal, and the webhook keeps `tenants.subscription_status`
-   in sync (`active` / `past_due` / `cancelled`).
+   `client/src/pages/Billing.tsx` and `server/src/lib/paystack.ts`
+   (`PLAN_AMOUNTS_ZAR`) if yours differ — the amount sent at checkout must match what
+   the Plan is configured for.
+2. Set `PAYSTACK_SECRET_KEY`, `PAYSTACK_PLAN_CODE_MONTHLY`, and `PAYSTACK_PLAN_CODE_ANNUAL`
+   (each Plan's `plan_code`, `PLN_...`).
+3. In Paystack's dashboard under **Settings → API Keys & Webhooks**, set the webhook
+   URL to `<your-domain>/api/billing/webhook`. No separate signing secret to
+   configure — Paystack signs webhook payloads with the same secret key.
+4. That's it — `/billing` lets a tenant admin start a Standard Checkout redirect or
+   open a Paystack subscription-management link (its closest equivalent to a hosted
+   billing portal), and the webhook keeps `tenants.subscription_status` in sync
+   (`active` / `past_due` / `cancelled`). Since Paystack's redirect back to us doesn't
+   reliably distinguish success from failure/abandonment on its own, the Billing page
+   also calls `GET /billing/verify?reference=...` to confirm the transaction directly
+   rather than guessing from the redirect.
 
 **Access is actually enforced**, not just displayed: once a tenant's trial ends and
 they haven't subscribed, every tenant-scoped API route (institutions, properties,
@@ -95,16 +102,13 @@ regardless of their own tenant's billing state.
 
 ### Premium add-on (financial statements + payroll)
 
-Financial statements and payroll are billed as a separate, always-monthly Stripe
+Financial statements and payroll are billed as a separate, always-monthly Paystack
 subscription (R200/month extra on the monthly base plan, R150/month extra on the
-annual plan — Stripe requires every item on one subscription to share a billing
-interval, so the add-on can't just be a line item on an annual base subscription).
-Set `STRIPE_PRICE_ID_ADDON_MONTHLY` and `STRIPE_PRICE_ID_ADDON_ANNUAL_EXTRA` to two
-more recurring Prices to enable `/billing`'s "Add Premium" button. `tenants.addon_status`
-tracks it independently of the base `subscription_status`. **The financial statement
-and payroll features themselves aren't built yet** — `/financial-statements` and
-`/payroll` are placeholder pages that show an upgrade prompt (or "coming soon" once
-the add-on is active); billing/entitlement is real, the features are still to come.
+annual plan — a subscription can't mix billing intervals within itself, so the add-on
+can't just be a line item on an annual base subscription). Set
+`PAYSTACK_PLAN_CODE_ADDON_MONTHLY` and `PAYSTACK_PLAN_CODE_ADDON_ANNUAL_EXTRA` to two
+more recurring Plans to enable `/billing`'s "Add Premium" button. `tenants.addon_status`
+tracks it independently of the base `subscription_status`.
 
 ## PWA / Google Play
 
@@ -188,10 +192,11 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - Minimal super-admin panel (Pits Marketing): list all tenants, override subscription
   status.
 - Light/dark theming via CSS variables, larger base font size, dense table-first UI.
-- Stripe subscription billing: checkout, billing portal, webhook-driven status sync,
-  and a real server-side paywall (402 + auto-redirect) once a trial lapses unpaid,
-  mirrored client-side so the whole app locks (not just individual API calls).
-  Separate Premium add-on subscription (financial statements + payroll billing).
+- Paystack subscription billing: checkout, subscription-management link,
+  webhook-driven status sync, and a real server-side paywall (402 + auto-redirect)
+  once a trial lapses unpaid, mirrored client-side so the whole app locks (not just
+  individual API calls). Separate Premium add-on subscription (financial statements +
+  payroll billing).
 - Installable PWA (manifest, service worker, icons) — the shell only; see below.
 - Mobile-first navigation: a bottom tab bar with a "More" sheet on phone-sized
   viewports, full top nav on desktop — same routes, no separate mobile app.
@@ -214,10 +219,15 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
   credentials — verify with a real API key before relying on them in production.
 - **Forgot username** specifically isn't handled (only password reset) — a user who
   forgot their username but has their email can't currently recover it that way.
-- **Stripe integration is untested against live keys** — built and unit-verifiable
-  (lazy client init, status mapping, paywall enforcement), but the actual Checkout /
-  webhook round-trip needs your Stripe test-mode keys to exercise for real.
-- **Gmail OAuth is untested against a live Google client** — same reason as Stripe;
+- **Paystack integration is untested against live keys** — built and unit-verifiable
+  (webhook signature verification, plan-code inference, paywall enforcement — see
+  `server/tests/paystack.test.ts`), but the actual checkout/webhook round-trip needs
+  your Paystack test-mode keys to exercise for real. Renewal webhooks in particular
+  (`charge.success` for a recurring charge, which carries no metadata — only the
+  original checkout does) rely on matching the stored `paystack_customer_code`, which
+  is only populated after the *first* successful webhook — untested against Paystack's
+  actual renewal payloads.
+- **Gmail OAuth is untested against a live Google client** — same reason as Paystack;
   the code path is complete but needs your own `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET`
   to exercise the real consent screen and token refresh.
 - **Outlook/Microsoft 365 statement inbox** — not built, Gmail only for now.

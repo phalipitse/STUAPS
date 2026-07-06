@@ -60,15 +60,15 @@ export const tenants = pgTable("tenants", {
     .notNull()
     .default("trial"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
-  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
-  // Premium add-on (financial statements + payroll): a second, independent Stripe
+  paystackCustomerCode: varchar("paystack_customer_code", { length: 255 }),
+  paystackSubscriptionCode: varchar("paystack_subscription_code", { length: 255 }),
+  // Premium add-on (financial statements + payroll): a second, independent Paystack
   // subscription so it can be billed monthly even for tenants on the annual base
-  // plan (Stripe requires all items on one subscription to share a billing interval).
+  // plan (subscriptions can't mix billing intervals within themselves).
   addonStatus: addonStatusEnum("addon_status"),
-  addonStripeSubscriptionId: varchar("addon_stripe_subscription_id", { length: 255 }),
+  addonPaystackSubscriptionCode: varchar("addon_paystack_subscription_code", { length: 255 }),
   // "monthly" | "annual" — which base plan interval the tenant is on, set from
-  // Stripe checkout metadata once the base subscription activates. Determines
+  // Paystack checkout metadata once the base subscription activates. Determines
   // which of the two premium add-on prices applies (R200/mo vs R150/mo extra).
   billingPlan: varchar("billing_plan", { length: 16 }),
   isSuperAdminTenant: boolean("is_super_admin_tenant").notNull().default(false),

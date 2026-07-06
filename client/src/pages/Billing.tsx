@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../lib/api";
@@ -15,16 +15,32 @@ function formatRand(amount: number) {
 
 export function Billing() {
   const { tenant } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [plan, setPlan] = useState<Plan>("monthly");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<"checkout" | "portal" | "addon" | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<{ status: string; kind: string | null } | null>(
+    null
+  );
 
-  const checkoutResult = searchParams.get("checkout");
-  const addonResult = searchParams.get("addon");
   const daysLeft = trialDaysLeft(tenant);
-  const locked = isLocked(tenant) && checkoutResult !== "success";
+  const locked = isLocked(tenant) && paymentNotice?.status !== "success";
   const addonMonthlyPrice = tenant?.billingPlan === "annual" ? 150 : 200;
+
+  useEffect(() => {
+    // Paystack redirects back here with its own `reference` — the redirect alone
+    // doesn't reliably distinguish success/failure, so we verify it directly
+    // rather than trusting a success/cancelled flag we set ourselves.
+    const reference = searchParams.get("reference");
+    if (!reference) return;
+    api
+      .get<{ status: string; kind: string | null }>(
+        `/billing/verify?reference=${encodeURIComponent(reference)}`
+      )
+      .then(setPaymentNotice)
+      .finally(() => setSearchParams({}, { replace: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function startCheckout() {
     setError(null);
@@ -72,12 +88,15 @@ export function Billing() {
         <h1>Billing</h1>
       )}
 
-      {checkoutResult === "success" && (
-        <p className="muted">
-          Payment received — it may take a few seconds for your account to update.
+      {paymentNotice && (
+        <p className={paymentNotice.status === "success" ? "muted" : "error"}>
+          {paymentNotice.status === "success"
+            ? paymentNotice.kind === "addon"
+              ? "Premium add-on activated — it may take a few seconds for your account to update."
+              : "Payment received — it may take a few seconds for your account to update."
+            : `Payment ${paymentNotice.status}. If you were charged, contact support — otherwise you can try again below.`}
         </p>
       )}
-      {checkoutResult === "cancelled" && <p className="muted">Checkout cancelled.</p>}
 
       {!locked && (
         <div className="kpi-row">
@@ -159,12 +178,6 @@ export function Billing() {
       {!locked && (
         <>
           <h2>Premium: financial statements &amp; payroll</h2>
-          {addonResult === "success" && (
-            <p className="muted">
-              Premium add-on activated — it may take a few seconds for your account to update.
-            </p>
-          )}
-          {addonResult === "cancelled" && <p className="muted">Add-on checkout cancelled.</p>}
           <p className="muted">
             Unlock income statements, balance sheets, cash flow, and payroll/tax tools for an extra{" "}
             {formatRand(addonMonthlyPrice)}/month on top of your {tenant?.billingPlan ?? "monthly"} plan.

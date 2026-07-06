@@ -29,6 +29,13 @@
       "when": 1783364091729,
       "tag": "0003_flashy_ulik",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783365364283,
+      "tag": "0004_paystack_rename",
+      "breakpoints": true
     }
   ]
 }
