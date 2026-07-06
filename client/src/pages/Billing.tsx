@@ -3,14 +3,24 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../lib/api";
 
+type Plan = "monthly" | "annual";
+
+const MONTHLY_PRICE = 750;
+const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * 12 * 0.9); // 12 x R750, less 10% = R8,100
+
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
+function formatRand(amount: number) {
+  return `R${amount.toLocaleString("en-ZA")}`;
+}
+
 export function Billing() {
   const { tenant } = useAuth();
   const [searchParams] = useSearchParams();
+  const [plan, setPlan] = useState<Plan>("monthly");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<"checkout" | "portal" | null>(null);
 
@@ -21,7 +31,7 @@ export function Billing() {
     setError(null);
     setLoading("checkout");
     try {
-      const res = await api.post<{ url: string }>("/billing/checkout");
+      const res = await api.post<{ url: string }>("/billing/checkout", { plan });
       window.location.href = res.url;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not start checkout");
@@ -41,6 +51,8 @@ export function Billing() {
     }
   }
 
+  const needsToSubscribe = tenant?.subscriptionStatus !== "active";
+
   return (
     <div className="page">
       <h1>Billing</h1>
@@ -53,10 +65,6 @@ export function Billing() {
       {checkoutResult === "cancelled" && <p className="muted">Checkout cancelled.</p>}
 
       <div className="kpi-row">
-        <div className="kpi-tile">
-          <span className="kpi-label">Plan</span>
-          <span className="kpi-value">R750 / month</span>
-        </div>
         <div className="kpi-tile">
           <span className="kpi-label">Status</span>
           <span className="kpi-value">
@@ -88,12 +96,40 @@ export function Billing() {
         </p>
       )}
 
+      {needsToSubscribe && (
+        <div className="plan-row">
+          <button
+            type="button"
+            className={`plan-card${plan === "monthly" ? " plan-card-selected" : ""}`}
+            onClick={() => setPlan("monthly")}
+          >
+            <span className="plan-name">Monthly</span>
+            <span className="plan-price">{formatRand(MONTHLY_PRICE)}</span>
+            <span className="plan-period">per month</span>
+          </button>
+          <button
+            type="button"
+            className={`plan-card${plan === "annual" ? " plan-card-selected" : ""}`}
+            onClick={() => setPlan("annual")}
+          >
+            <span className="plan-badge">Save 10%</span>
+            <span className="plan-name">Annual</span>
+            <span className="plan-price">{formatRand(ANNUAL_PRICE)}</span>
+            <span className="plan-period">
+              per year — {formatRand(Math.round(ANNUAL_PRICE / 12))}/mo equivalent
+            </span>
+          </button>
+        </div>
+      )}
+
       {error && <p className="error">{error}</p>}
 
       <div className="inline-form">
-        {tenant?.subscriptionStatus !== "active" && (
+        {needsToSubscribe && (
           <button onClick={startCheckout} disabled={loading !== null}>
-            {loading === "checkout" ? "Redirecting…" : "Upgrade now — R750/month"}
+            {loading === "checkout"
+              ? "Redirecting…"
+              : `Upgrade now — ${plan === "monthly" ? formatRand(MONTHLY_PRICE) + "/month" : formatRand(ANNUAL_PRICE) + "/year"}`}
           </button>
         )}
         <button onClick={openPortal} disabled={loading !== null}>

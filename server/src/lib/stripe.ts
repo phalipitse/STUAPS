@@ -17,10 +17,13 @@ export function getStripeClient(): Stripe {
   return client;
 }
 
-export function getStripePriceId(): string {
-  const priceId = process.env.STRIPE_PRICE_ID;
+export type BillingPlan = "monthly" | "annual";
+
+export function getStripePriceId(plan: BillingPlan): string {
+  const envVar = plan === "annual" ? "STRIPE_PRICE_ID_ANNUAL" : "STRIPE_PRICE_ID_MONTHLY";
+  const priceId = process.env[envVar];
   if (!priceId) {
-    throw new Error("STRIPE_PRICE_ID is not configured");
+    throw new Error(`${envVar} is not configured`);
   }
   return priceId;
 }

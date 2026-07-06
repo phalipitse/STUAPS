@@ -8,7 +8,7 @@ import { startOtp, verifyOtp } from "../lib/otpFlow.js";
 
 export const registerRouter = Router();
 
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 14;
 
 interface PendingRegistration {
   companyName: string;

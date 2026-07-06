@@ -70,13 +70,14 @@ and `api/[...all].ts` wraps the whole Express app as one serverless function
 ## Setting up billing (Stripe)
 
 Without `STRIPE_SECRET_KEY` configured, the billing routes (`/api/billing/*`) fail
-cleanly with a 500 — everything else, including the 7-day trial itself, works fine.
+cleanly with a 500 — everything else, including the 14-day trial itself, works fine.
 To turn on real paywalling:
 
-1. Create a Stripe account and, in test mode, a Product + recurring Price (R750/month
-   in this build's default copy — change the price/copy in `client/src/pages/Billing.tsx`
-   if yours differs).
-2. Set `STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` (the Price's ID, `price_...`).
+1. Create a Stripe account and, in test mode, a Product with **two** recurring Prices:
+   monthly (R750) and annual (R8,100 — 12 × R750 less 10%). Change the prices/copy in
+   `client/src/pages/Billing.tsx` if yours differ.
+2. Set `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_MONTHLY`, and `STRIPE_PRICE_ID_ANNUAL`
+   (each Price's ID, `price_...`).
 3. Create a webhook endpoint in Stripe pointing at `<your-domain>/api/billing/webhook`,
    listening for `checkout.session.completed`, `customer.subscription.updated`, and
    `customer.subscription.deleted`. Set `STRIPE_WEBHOOK_SECRET` to its signing secret.
@@ -116,7 +117,7 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - Username/password login + session auth (no "Sign in with Replit" — providers only
   ever see username/password).
 - Self-registration with OTP verification (email/SMS/both), creating a tenant + admin
-  user in `trial` status with a 7-day trial window.
+  user in `trial` status with a 14-day trial window.
 - CSV upload & parsing matching the real accounting export format (`STUD # <number>:
   <name> - <residence>` lines vs. fee/deduction lines), with an integrity check that
   rejects an upload if line items don't sum to the stated invoice Total.

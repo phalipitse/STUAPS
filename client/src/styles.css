@@ -1,64 +1,77 @@
 :root {
   --font-size-base: 17px;
-  --color-bg: #f7f8fa;
+  --color-bg: #f6f5fc;
   --color-surface: #ffffff;
-  --color-text: #1a1d23;
-  --color-muted: #5b6270;
-  --color-border: #d8dce3;
-  --color-accent: #1f4e79;
+  --color-text: #211c3d;
+  --color-muted: #6b6690;
+  --color-border: #e3e0f5;
+  --color-accent: #6c5ce7;
+  --color-accent-2: #00c2a8;
   --color-accent-contrast: #ffffff;
-  --color-outstanding-bg: #ffc7ce;
-  --color-outstanding-text: #9c0006;
-  --color-paid-bg: #d9ead3;
-  --color-paid-text: #274e13;
-  --color-header-bg: #e7e6e6;
+  --color-outstanding-bg: #ffe1e6;
+  --color-outstanding-text: #c81e4a;
+  --color-paid-bg: #dcfce7;
+  --color-paid-text: #0f9d58;
+  --color-header-bg: #efebfc;
+  --color-accent-gradient: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
+  --shadow-soft: 0 2px 10px rgba(108, 92, 231, 0.08);
+  --shadow-lift: 0 6px 20px rgba(108, 92, 231, 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #14161a;
-    --color-surface: #1d2026;
-    --color-text: #eceef1;
-    --color-muted: #9aa2b1;
-    --color-border: #333844;
-    --color-accent: #4a90c4;
-    --color-accent-contrast: #0b1420;
-    --color-outstanding-bg: #4a1e22;
-    --color-outstanding-text: #ff9aa4;
-    --color-paid-bg: #1e3a24;
-    --color-paid-text: #9fe6ac;
-    --color-header-bg: #262a33;
+    --color-bg: #16132a;
+    --color-surface: #1f1b3a;
+    --color-text: #edeafb;
+    --color-muted: #a29cd1;
+    --color-border: #332c5c;
+    --color-accent: #8b7cf6;
+    --color-accent-2: #2dd9c4;
+    --color-accent-contrast: #14102a;
+    --color-outstanding-bg: #4a1830;
+    --color-outstanding-text: #ff87a8;
+    --color-paid-bg: #0e3b2c;
+    --color-paid-text: #6ee7b7;
+    --color-header-bg: #241f44;
+    --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.35);
+    --shadow-lift: 0 8px 24px rgba(139, 124, 246, 0.35);
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #14161a;
-  --color-surface: #1d2026;
-  --color-text: #eceef1;
-  --color-muted: #9aa2b1;
-  --color-border: #333844;
-  --color-accent: #4a90c4;
-  --color-accent-contrast: #0b1420;
-  --color-outstanding-bg: #4a1e22;
-  --color-outstanding-text: #ff9aa4;
-  --color-paid-bg: #1e3a24;
-  --color-paid-text: #9fe6ac;
-  --color-header-bg: #262a33;
+  --color-bg: #16132a;
+  --color-surface: #1f1b3a;
+  --color-text: #edeafb;
+  --color-muted: #a29cd1;
+  --color-border: #332c5c;
+  --color-accent: #8b7cf6;
+  --color-accent-2: #2dd9c4;
+  --color-accent-contrast: #14102a;
+  --color-outstanding-bg: #4a1830;
+  --color-outstanding-text: #ff87a8;
+  --color-paid-bg: #0e3b2c;
+  --color-paid-text: #6ee7b7;
+  --color-header-bg: #241f44;
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 8px 24px rgba(139, 124, 246, 0.35);
 }
 
 :root[data-theme="light"] {
-  --color-bg: #f7f8fa;
+  --color-bg: #f6f5fc;
   --color-surface: #ffffff;
-  --color-text: #1a1d23;
-  --color-muted: #5b6270;
-  --color-border: #d8dce3;
-  --color-accent: #1f4e79;
+  --color-text: #211c3d;
+  --color-muted: #6b6690;
+  --color-border: #e3e0f5;
+  --color-accent: #6c5ce7;
+  --color-accent-2: #00c2a8;
   --color-accent-contrast: #ffffff;
-  --color-outstanding-bg: #ffc7ce;
-  --color-outstanding-text: #9c0006;
-  --color-paid-bg: #d9ead3;
-  --color-paid-text: #274e13;
-  --color-header-bg: #e7e6e6;
+  --color-outstanding-bg: #ffe1e6;
+  --color-outstanding-text: #c81e4a;
+  --color-paid-bg: #dcfce7;
+  --color-paid-text: #0f9d58;
+  --color-header-bg: #efebfc;
+  --shadow-soft: 0 2px 10px rgba(108, 92, 231, 0.08);
+  --shadow-lift: 0 6px 20px rgba(108, 92, 231, 0.22);
 }
 
 * {
@@ -100,19 +113,34 @@ button {
   align-items: center;
   justify-content: center;
   background: var(--color-bg);
+  background-image: radial-gradient(
+      circle at 15% 15%,
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 85% 85%,
+      color-mix(in srgb, var(--color-accent-2) 16%, transparent),
+      transparent 45%
+    );
 }
 
 .auth-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 2rem;
   width: min(420px, 90vw);
+  box-shadow: var(--shadow-lift);
 }
 
 .auth-card h1 {
   margin-top: 0;
   font-size: 1.4rem;
+  background: var(--color-accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .auth-card form {
@@ -132,20 +160,33 @@ button {
 .auth-card select {
   padding: 0.5rem 0.6rem;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--color-bg);
   color: var(--color-text);
   font-weight: normal;
 }
 
+.auth-card input:focus,
+.auth-card select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
 .auth-card button {
-  padding: 0.6rem;
+  padding: 0.65rem;
   border: none;
-  border-radius: 4px;
-  background: var(--color-accent);
+  border-radius: 8px;
+  background: var(--color-accent-gradient);
   color: var(--color-accent-contrast);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-card button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
 }
 
 .link-button {
@@ -163,10 +204,10 @@ button {
 }
 
 .trial-banner {
-  background: #f7d97a;
-  color: #3a2e00;
+  background: linear-gradient(135deg, #ffb648, #ff8a4c);
+  color: #3a2000;
   text-align: center;
-  padding: 0.5rem;
+  padding: 0.55rem;
   font-weight: 600;
 }
 
@@ -192,14 +233,17 @@ button {
 }
 
 .brand {
-  font-weight: 700;
-  color: var(--color-accent);
+  font-weight: 800;
+  background: var(--color-accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .institution-select {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--color-bg);
   color: var(--color-text);
 }
@@ -217,12 +261,17 @@ button {
   text-decoration: none;
   padding: 0.3rem 0;
   border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-nav a:hover {
+  color: var(--color-accent);
 }
 
 .app-nav a.active {
-  border-bottom-color: var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .user-menu {
@@ -234,10 +283,15 @@ button {
 .user-menu button {
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
+}
+
+.user-menu button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .app-content {
@@ -261,12 +315,14 @@ button {
 .kpi-tile {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-top: 3px solid var(--color-accent);
+  border-radius: 10px;
   padding: 1rem 1.25rem;
   min-width: 160px;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  box-shadow: var(--shadow-soft);
 }
 
 .kpi-label {
@@ -281,6 +337,10 @@ button {
   font-weight: 700;
 }
 
+.kpi-outstanding {
+  border-top-color: var(--color-outstanding-text);
+}
+
 .kpi-outstanding .kpi-value {
   color: var(--color-outstanding-text);
 }
@@ -292,6 +352,9 @@ button {
   border-collapse: collapse;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
 
 .data-table th,
@@ -354,8 +417,9 @@ button {
   margin-bottom: 1.5rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1rem;
+  box-shadow: var(--shadow-soft);
 }
 
 .inline-form label {
@@ -370,23 +434,102 @@ button {
 .inline-form select {
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--color-bg);
   color: var(--color-text);
 }
 
+.inline-form input:focus,
+.inline-form select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
 .inline-form button {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.1rem;
   border: none;
-  border-radius: 4px;
-  background: var(--color-accent);
+  border-radius: 8px;
+  background: var(--color-accent-gradient);
   color: var(--color-accent-contrast);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   height: fit-content;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inline-form button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
 }
 
 .inline-form button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Billing plan picker */
+
+.plan-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 200px;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  color: var(--color-text);
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+
+.plan-card-selected {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-lift);
+}
+
+.plan-badge {
+  position: absolute;
+  top: -0.6rem;
+  right: 1rem;
+  background: var(--color-accent-gradient);
+  color: var(--color-accent-contrast);
+  font-size: 0.75em;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.plan-name {
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  font-size: 0.8em;
+  letter-spacing: 0.03em;
+}
+
+.plan-price {
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.plan-period {
+  color: var(--color-muted);
+  font-size: 0.85em;
 }

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { tenants } from "../db/schema.js";
@@ -12,9 +13,18 @@ function originOf(req: { protocol: string; get: (h: string) => string | undefine
   return `${req.protocol}://${req.get("host")}`;
 }
 
+const checkoutSchema = z.object({
+  plan: z.enum(["monthly", "annual"]).default("monthly"),
+});
+
 /** Starts (or resumes) a Stripe Checkout session for the caller's tenant. */
 billingRouter.post("/checkout", requireAuth, requireRole("admin"), async (req, res, next) => {
   try {
+    const parsed = checkoutSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid plan" });
+    }
+
     const stripe = getStripeClient();
     const [tenant] = await db.select().from(tenants).where(eq(tenants.id, req.session.tenantId!));
     if (!tenant) return res.status(404).json({ error: "Tenant not found" });
@@ -33,11 +43,11 @@ billingRouter.post("/checkout", requireAuth, requireRole("admin"), async (req, r
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: getStripePriceId(), quantity: 1 }],
+      line_items: [{ price: getStripePriceId(parsed.data.plan), quantity: 1 }],
       success_url: `${originOf(req)}/billing?checkout=success`,
       cancel_url: `${originOf(req)}/billing?checkout=cancelled`,
-      metadata: { tenantId: String(tenant.id) },
-      subscription_data: { metadata: { tenantId: String(tenant.id) } },
+      metadata: { tenantId: String(tenant.id), plan: parsed.data.plan },
+      subscription_data: { metadata: { tenantId: String(tenant.id), plan: parsed.data.plan } },
     });
 
     res.json({ url: session.url });
