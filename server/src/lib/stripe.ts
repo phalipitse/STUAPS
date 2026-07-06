@@ -28,6 +28,22 @@ export function getStripePriceId(plan: BillingPlan): string {
   return priceId;
 }
 
+/**
+ * The Premium add-on (financial statements + payroll) is always billed monthly,
+ * even for tenants on the annual base plan — Stripe requires every item on one
+ * subscription to share a billing interval, so the add-on lives on its own,
+ * second subscription rather than as a line item on the base one.
+ */
+export function getAddonPriceId(basePlan: BillingPlan): string {
+  const envVar =
+    basePlan === "annual" ? "STRIPE_PRICE_ID_ADDON_ANNUAL_EXTRA" : "STRIPE_PRICE_ID_ADDON_MONTHLY";
+  const priceId = process.env[envVar];
+  if (!priceId) {
+    throw new Error(`${envVar} is not configured`);
+  }
+  return priceId;
+}
+
 /** Maps a Stripe subscription status to our own tenant subscription_status enum. */
 export function mapStripeStatus(
   stripeStatus: Stripe.Subscription.Status

@@ -30,6 +30,21 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
   "partial",
 ]);
 
+export const addonStatusEnum = pgEnum("addon_status", [
+  "active",
+  "past_due",
+  "cancelled",
+]);
+
+export const emailProviderEnum = pgEnum("email_provider", ["gmail"]);
+
+export const detectedStatementStatusEnum = pgEnum("detected_statement_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "import_failed",
+]);
+
 // ---------------------------------------------------------------------------
 // Tenants (accommodation providers) and users
 // ---------------------------------------------------------------------------
@@ -47,6 +62,15 @@ export const tenants = pgTable("tenants", {
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
   stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  // Premium add-on (financial statements + payroll): a second, independent Stripe
+  // subscription so it can be billed monthly even for tenants on the annual base
+  // plan (Stripe requires all items on one subscription to share a billing interval).
+  addonStatus: addonStatusEnum("addon_status"),
+  addonStripeSubscriptionId: varchar("addon_stripe_subscription_id", { length: 255 }),
+  // "monthly" | "annual" — which base plan interval the tenant is on, set from
+  // Stripe checkout metadata once the base subscription activates. Determines
+  // which of the two premium add-on prices applies (R200/mo vs R150/mo extra).
+  billingPlan: varchar("billing_plan", { length: 16 }),
   isSuperAdminTenant: boolean("is_super_admin_tenant").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -222,6 +246,77 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
 });
 
 // ---------------------------------------------------------------------------
+// Email inbox integration (Gmail/Outlook statement detection)
+// ---------------------------------------------------------------------------
+
+export const emailConnections = pgTable(
+  "email_connections",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    provider: emailProviderEnum("provider").notNull().default("gmail"),
+    emailAddress: varchar("email_address", { length: 255 }).notNull(),
+    // Refresh/access tokens are AES-256-GCM encrypted at rest (lib/crypto.ts) —
+    // never stored or logged in plaintext.
+    encryptedRefreshToken: text("encrypted_refresh_token").notNull(),
+    encryptedAccessToken: text("encrypted_access_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    // Comma-separated sender keywords/domains to watch for, e.g. "nsfas.org.za,fundi.co.za".
+    watchKeywords: text("watch_keywords").notNull().default("nsfas.org.za"),
+    lastScannedAt: timestamp("last_scanned_at", { withTimezone: true }),
+    connectedByUserId: integer("connected_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantProviderUnique: uniqueIndex("email_connections_tenant_provider_unique").on(
+      t.tenantId,
+      t.provider
+    ),
+  })
+);
+
+export const detectedStatements = pgTable(
+  "detected_statements",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    emailConnectionId: integer("email_connection_id")
+      .notNull()
+      .references(() => emailConnections.id, { onDelete: "cascade" }),
+    providerMessageId: varchar("provider_message_id", { length: 255 }).notNull(),
+    providerAttachmentId: varchar("provider_attachment_id", { length: 255 }),
+    sender: varchar("sender", { length: 255 }).notNull(),
+    subject: text("subject"),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    attachmentFilename: varchar("attachment_filename", { length: 255 }),
+    status: detectedStatementStatusEnum("status").notNull().default("pending"),
+    // Best-effort PDF parse preview, filled in once an admin approves — never
+    // relied on blindly; see lib/pdfStatementParser.ts for the extraction heuristic.
+    parsedPreview: text("parsed_preview"),
+    importedInvoiceId: integer("imported_invoice_id").references(() => invoices.id, {
+      onDelete: "set null",
+    }),
+    reviewedByUserId: integer("reviewed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    connectionMessageUnique: uniqueIndex("detected_statements_connection_message_unique").on(
+      t.emailConnectionId,
+      t.providerMessageId
+    ),
+  })
+);
+
+// ---------------------------------------------------------------------------
 // Relations
 // ---------------------------------------------------------------------------
 
@@ -273,5 +368,18 @@ export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ one }) =
   student: one(students, {
     fields: [invoiceLineItems.studentId],
     references: [students.id],
+  }),
+}));
+
+export const emailConnectionsRelations = relations(emailConnections, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [emailConnections.tenantId], references: [tenants.id] }),
+  detectedStatements: many(detectedStatements),
+}));
+
+export const detectedStatementsRelations = relations(detectedStatements, ({ one }) => ({
+  tenant: one(tenants, { fields: [detectedStatements.tenantId], references: [tenants.id] }),
+  emailConnection: one(emailConnections, {
+    fields: [detectedStatements.emailConnectionId],
+    references: [emailConnections.id],
   }),
 }));

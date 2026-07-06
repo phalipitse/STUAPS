@@ -13,6 +13,8 @@ export interface SessionTenant {
   companyName: string;
   subscriptionStatus: "trial" | "active" | "past_due" | "cancelled";
   trialEndsAt: string | null;
+  billingPlan: "monthly" | "annual" | null;
+  addonStatus: "active" | "past_due" | "cancelled" | null;
 }
 
 interface AuthState {

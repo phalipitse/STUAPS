@@ -18,11 +18,13 @@ export function Billing() {
   const [searchParams] = useSearchParams();
   const [plan, setPlan] = useState<Plan>("monthly");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<"checkout" | "portal" | null>(null);
+  const [loading, setLoading] = useState<"checkout" | "portal" | "addon" | null>(null);
 
   const checkoutResult = searchParams.get("checkout");
+  const addonResult = searchParams.get("addon");
   const daysLeft = trialDaysLeft(tenant);
   const locked = isLocked(tenant) && checkoutResult !== "success";
+  const addonMonthlyPrice = tenant?.billingPlan === "annual" ? 150 : 200;
 
   async function startCheckout() {
     setError(null);
@@ -44,6 +46,18 @@ export function Billing() {
       window.location.href = res.url;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not open billing portal");
+      setLoading(null);
+    }
+  }
+
+  async function startAddonCheckout() {
+    setError(null);
+    setLoading("addon");
+    try {
+      const res = await api.post<{ url: string }>("/billing/addon/checkout");
+      window.location.href = res.url;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not start checkout");
       setLoading(null);
     }
   }
@@ -141,6 +155,34 @@ export function Billing() {
           </button>
         )}
       </div>
+
+      {!locked && (
+        <>
+          <h2>Premium: financial statements &amp; payroll</h2>
+          {addonResult === "success" && (
+            <p className="muted">
+              Premium add-on activated — it may take a few seconds for your account to update.
+            </p>
+          )}
+          {addonResult === "cancelled" && <p className="muted">Add-on checkout cancelled.</p>}
+          <p className="muted">
+            Unlock income statements, balance sheets, cash flow, and payroll/tax tools for an extra{" "}
+            {formatRand(addonMonthlyPrice)}/month on top of your {tenant?.billingPlan ?? "monthly"} plan.
+          </p>
+          {tenant?.addonStatus === "active" ? (
+            <p>
+              <span className="status-pill status-approved">Premium active</span> — manage or cancel it
+              from "Manage billing" above.
+            </p>
+          ) : (
+            <div className="inline-form">
+              <button onClick={startAddonCheckout} disabled={loading !== null}>
+                {loading === "addon" ? "Redirecting…" : `Add Premium — ${formatRand(addonMonthlyPrice)}/month`}
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

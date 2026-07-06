@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { invoices, invoiceLineItems, students } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -9,6 +9,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { assertInstitutionAccessible, ForbiddenError } from "../lib/tenantScope.js";
 import { parseInvoiceCsv, CsvParseError } from "../lib/csvParser.js";
+import { importParsedCsvInvoice } from "../lib/invoiceImport.js";
 import { summarizeInvoice } from "../lib/recon.js";
 
 export const invoicesRouter = Router();
@@ -123,96 +124,9 @@ invoicesRouter.post(
         });
       }
 
-      const result = await db.transaction(async (tx) => {
-        const [existingInvoice] = await tx
-          .select()
-          .from(invoices)
-          .where(
-            and(
-              eq(invoices.institutionId, institutionId),
-              eq(invoices.invoiceNumber, parsed.header.invoiceNumber)
-            )
-          );
+      const invoiceId = await importParsedCsvInvoice(institutionId, parsed);
 
-        let invoiceId: number;
-        if (existingInvoice) {
-          invoiceId = existingInvoice.id;
-          await tx
-            .update(invoices)
-            .set({
-              invoiceDate: parsed.header.invoiceDate,
-              dueDate: parsed.header.dueDate,
-              total: parsed.header.total.toString(),
-            })
-            .where(eq(invoices.id, invoiceId));
-          await tx.delete(invoiceLineItems).where(eq(invoiceLineItems.invoiceId, invoiceId));
-        } else {
-          const [created] = await tx
-            .insert(invoices)
-            .values({
-              institutionId,
-              invoiceNumber: parsed.header.invoiceNumber,
-              invoiceDate: parsed.header.invoiceDate,
-              dueDate: parsed.header.dueDate,
-              total: parsed.header.total.toString(),
-              status: "outstanding",
-            })
-            .returning();
-          invoiceId = created.id;
-        }
-
-        for (const line of parsed.lines) {
-          if (line.kind === "fee") {
-            await tx.insert(invoiceLineItems).values({
-              invoiceId,
-              studentId: null,
-              description: line.description,
-              quantity: line.quantity.toString(),
-              unitAmount: line.unitAmount.toString(),
-              lineTotal: line.lineTotal.toString(),
-              isFee: true,
-            });
-            continue;
-          }
-
-          let [student] = await tx
-            .select()
-            .from(students)
-            .where(
-              and(
-                eq(students.institutionId, institutionId),
-                eq(students.studentNumber, line.studentNumber)
-              )
-            );
-          if (!student) {
-            [student] = await tx
-              .insert(students)
-              .values({
-                institutionId,
-                studentNumber: line.studentNumber,
-                name: line.name,
-                surname: line.surname,
-                residence: line.residence,
-                firstSeenInvoiceId: invoiceId,
-              })
-              .returning();
-          }
-
-          await tx.insert(invoiceLineItems).values({
-            invoiceId,
-            studentId: student.id,
-            description: line.description,
-            quantity: line.quantity.toString(),
-            unitAmount: line.unitAmount.toString(),
-            lineTotal: line.lineTotal.toString(),
-            isFee: false,
-          });
-        }
-
-        return invoiceId;
-      });
-
-      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, result));
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
       res.status(201).json({ invoice, studentLines: parsed.lines.length });
     } catch (err) {
       if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });

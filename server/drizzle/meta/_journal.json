@@ -15,6 +15,20 @@
       "when": 1783355153667,
       "tag": "0001_plain_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783363558645,
+      "tag": "0002_cuddly_sabra",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783364091729,
+      "tag": "0003_flashy_ulik",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@ import { reportsRouter } from "./routes/reports.js";
 import { adminRouter } from "./routes/admin.js";
 import { teamRouter } from "./routes/team.js";
 import { billingRouter, stripeWebhookHandler } from "./routes/billing.js";
+import { emailIntegrationsRouter } from "./routes/emailIntegrations.js";
 
 const PgSession = connectPgSimple(session);
 
@@ -67,6 +68,7 @@ export function createApp() {
   app.use("/api/admin", adminRouter);
   app.use("/api/team", teamRouter);
   app.use("/api/billing", billingRouter);
+  app.use("/api/email-integrations", emailIntegrationsRouter);
 
   // Centralized error handler — keeps ForbiddenError/CsvParseError messages
   // out of routes and off the client's back for anything unexpected.

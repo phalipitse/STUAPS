@@ -88,8 +88,23 @@ To turn on real paywalling:
 **Access is actually enforced**, not just displayed: once a tenant's trial ends and
 they haven't subscribed, every tenant-scoped API route (institutions, properties,
 students, invoices, reports, team) returns `402 SUBSCRIPTION_REQUIRED`, and the
-frontend auto-redirects to `/billing` on that response. Super-admins (Pits Marketing)
-bypass this regardless of their own tenant's billing state.
+frontend auto-redirects to `/billing` on that response. The whole app locks
+client-side too — nav and every page disappear, `/billing` shows nothing but "Make a
+payment to continue with Stuaps." Super-admins (Pits Marketing) bypass this
+regardless of their own tenant's billing state.
+
+### Premium add-on (financial statements + payroll)
+
+Financial statements and payroll are billed as a separate, always-monthly Stripe
+subscription (R200/month extra on the monthly base plan, R150/month extra on the
+annual plan — Stripe requires every item on one subscription to share a billing
+interval, so the add-on can't just be a line item on an annual base subscription).
+Set `STRIPE_PRICE_ID_ADDON_MONTHLY` and `STRIPE_PRICE_ID_ADDON_ANNUAL_EXTRA` to two
+more recurring Prices to enable `/billing`'s "Add Premium" button. `tenants.addon_status`
+tracks it independently of the base `subscription_status`. **The financial statement
+and payroll features themselves aren't built yet** — `/financial-statements` and
+`/payroll` are placeholder pages that show an upgrade prompt (or "coming soon" once
+the add-on is active); billing/entitlement is real, the features are still to come.
 
 ## PWA / Google Play
 
@@ -102,6 +117,39 @@ standard path is wrapping it as a **Trusted Web Activity** via
 stable HTTPS URL, then uploading the resulting `.aab` through the Play Console. That
 needs a Google Play Developer account ($25 one-time) and, for signing, either
 Bubblewrap's own keystore generation or Google Play App Signing.
+
+## Setting up the Gmail statement inbox
+
+Lets a tenant admin connect their Gmail account so Stuaps can watch for statement
+emails from NSFAS or other student funders. Nothing is ever imported without an
+explicit admin approval per email.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a project,
+   enable the **Gmail API**, and configure the OAuth consent screen (external, since
+   tenants are outside your org).
+2. Create an **OAuth 2.0 Client ID** (Web application) with an authorized redirect URI
+   of `<your-app-origin>/api/email-integrations/gmail/callback`.
+3. Set `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` to that client's credentials, and
+   `ENCRYPTION_KEY` to a random secret (`openssl rand -hex 32`) — OAuth tokens are
+   AES-256-GCM encrypted at rest, never stored in plaintext.
+4. Without these set, `/email-inbox` still loads but shows "Gmail integration hasn't
+   been set up on this server yet."
+
+Once connected, an admin can "Scan now" (searches Gmail for `has:attachment` mail from
+configured sender domains — defaults to `nsfas.org.za`, editable per tenant), review
+each detected email, and approve or reject it. Approving downloads the attachment and:
+- **CSV attachments** go through the exact same parser as a manual invoice upload.
+- **PDF attachments** go through a best-effort text-extraction heuristic
+  (`server/src/lib/pdfStatementParser.ts`) — funder statement layouts vary and change
+  without notice, so this is *not* a guaranteed-correct parser. Every result (line
+  items found, or just a total, or nothing) is written back as a preview for the admin
+  to check, and the original attachment can always be downloaded and re-entered
+  manually if the extraction looks wrong. Only line items whose extracted reference
+  number matches an *existing* student in that institution get linked to that
+  student — a mis-read reference never fabricates a new student record.
+
+Outlook/Microsoft 365 isn't wired up yet (Gmail only, per current scope) — the schema
+(`email_connections.provider`) already anticipates adding it as a second provider.
 
 ## OTP delivery in dev
 
@@ -141,8 +189,17 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
   status.
 - Light/dark theming via CSS variables, larger base font size, dense table-first UI.
 - Stripe subscription billing: checkout, billing portal, webhook-driven status sync,
-  and a real server-side paywall (402 + auto-redirect) once a trial lapses unpaid.
+  and a real server-side paywall (402 + auto-redirect) once a trial lapses unpaid,
+  mirrored client-side so the whole app locks (not just individual API calls).
+  Separate Premium add-on subscription (financial statements + payroll billing).
 - Installable PWA (manifest, service worker, icons) — the shell only; see below.
+- Mobile-first navigation: a bottom tab bar with a "More" sheet on phone-sized
+  viewports, full top nav on desktop — same routes, no separate mobile app.
+- Printable reports: Dashboard, Outstanding, and per-invoice recon each have a Print
+  button and a dedicated print stylesheet (chrome hidden, plain black-on-white tables).
+- Gmail statement inbox: connect a Gmail account, scan for funder statement emails,
+  admin-approve each one before it's imported (CSV via the existing parser, PDF via a
+  best-effort heuristic) — see "Setting up the Gmail statement inbox" below.
 
 ## Deliberately deferred (flagged, not built)
 
@@ -160,4 +217,18 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - **Stripe integration is untested against live keys** — built and unit-verifiable
   (lazy client init, status mapping, paywall enforcement), but the actual Checkout /
   webhook round-trip needs your Stripe test-mode keys to exercise for real.
+- **Gmail OAuth is untested against a live Google client** — same reason as Stripe;
+  the code path is complete but needs your own `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET`
+  to exercise the real consent screen and token refresh.
+- **Outlook/Microsoft 365 statement inbox** — not built, Gmail only for now.
+- **PDF statement parsing is a heuristic, not a guaranteed-correct parser** — see
+  the Gmail inbox section above. Expect to tune `pdfStatementParser.ts` against real
+  funder statement samples.
+- **Financial statements and payroll/tax tools themselves** — the Premium add-on is
+  billed and gated (`tenants.addon_status`), but the actual income statement/balance
+  sheet/cash-flow/payroll engines aren't built yet; `/financial-statements` and
+  `/payroll` are upgrade-prompt placeholders. Payroll/tax in particular needs real
+  accounting sign-off before being presented as filing-ready (UIF/PAYE tables, SARS
+  compliance) — treat any future version as an estimate tool, not a substitute for an
+  accountant, unless independently verified.
 

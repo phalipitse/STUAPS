@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN "billing_plan" varchar(16);

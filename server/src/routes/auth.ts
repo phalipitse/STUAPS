@@ -45,6 +45,8 @@ authRouter.post("/login", async (req, res) => {
           companyName: tenant.companyName,
           subscriptionStatus: tenant.subscriptionStatus,
           trialEndsAt: tenant.trialEndsAt,
+          billingPlan: tenant.billingPlan,
+          addonStatus: tenant.addonStatus,
         }
       : null,
   });
@@ -136,6 +138,8 @@ authRouter.get("/me", requireAuth, async (req, res) => {
           companyName: tenant.companyName,
           subscriptionStatus: tenant.subscriptionStatus,
           trialEndsAt: tenant.trialEndsAt,
+          billingPlan: tenant.billingPlan,
+          addonStatus: tenant.addonStatus,
         }
       : null,
   });

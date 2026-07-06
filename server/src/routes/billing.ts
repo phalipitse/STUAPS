@@ -5,7 +5,8 @@ import { db } from "../db/index.js";
 import { tenants } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
-import { getStripeClient, getStripePriceId, mapStripeStatus } from "../lib/stripe.js";
+import { getStripeClient, getStripePriceId, getAddonPriceId, mapStripeStatus } from "../lib/stripe.js";
+import type { BillingPlan } from "../lib/stripe.js";
 
 export const billingRouter = Router();
 
@@ -46,8 +47,50 @@ billingRouter.post("/checkout", requireAuth, requireRole("admin"), async (req, r
       line_items: [{ price: getStripePriceId(parsed.data.plan), quantity: 1 }],
       success_url: `${originOf(req)}/billing?checkout=success`,
       cancel_url: `${originOf(req)}/billing?checkout=cancelled`,
-      metadata: { tenantId: String(tenant.id), plan: parsed.data.plan },
-      subscription_data: { metadata: { tenantId: String(tenant.id), plan: parsed.data.plan } },
+      metadata: { tenantId: String(tenant.id), plan: parsed.data.plan, kind: "base" },
+      subscription_data: {
+        metadata: { tenantId: String(tenant.id), plan: parsed.data.plan, kind: "base" },
+      },
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Starts a Checkout Session for the Premium add-on (financial statements +
+ * payroll) — a second, independent subscription on the same Stripe customer,
+ * priced off whichever base plan interval the tenant is already on.
+ */
+billingRouter.post("/addon/checkout", requireAuth, requireRole("admin"), async (req, res, next) => {
+  try {
+    const stripe = getStripeClient();
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, req.session.tenantId!));
+    if (!tenant) return res.status(404).json({ error: "Tenant not found" });
+
+    let customerId = tenant.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: tenant.contactEmail,
+        name: tenant.companyName,
+        metadata: { tenantId: String(tenant.id) },
+      });
+      customerId = customer.id;
+      await db.update(tenants).set({ stripeCustomerId: customerId }).where(eq(tenants.id, tenant.id));
+    }
+
+    const basePlan: BillingPlan = tenant.billingPlan === "annual" ? "annual" : "monthly";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: getAddonPriceId(basePlan), quantity: 1 }],
+      success_url: `${originOf(req)}/billing?addon=success`,
+      cancel_url: `${originOf(req)}/billing?addon=cancelled`,
+      metadata: { tenantId: String(tenant.id), kind: "addon" },
+      subscription_data: { metadata: { tenantId: String(tenant.id), kind: "addon" } },
     });
 
     res.json({ url: session.url });
@@ -104,13 +147,21 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
         const session = event.data.object;
         const tenantId = Number(session.metadata?.tenantId);
         if (tenantId && session.subscription) {
-          await db
-            .update(tenants)
-            .set({
-              stripeSubscriptionId: String(session.subscription),
-              subscriptionStatus: "active",
-            })
-            .where(eq(tenants.id, tenantId));
+          if (session.metadata?.kind === "addon") {
+            await db
+              .update(tenants)
+              .set({ addonStripeSubscriptionId: String(session.subscription), addonStatus: "active" })
+              .where(eq(tenants.id, tenantId));
+          } else {
+            await db
+              .update(tenants)
+              .set({
+                stripeSubscriptionId: String(session.subscription),
+                subscriptionStatus: "active",
+                billingPlan: session.metadata?.plan ?? null,
+              })
+              .where(eq(tenants.id, tenantId));
+          }
         }
         break;
       }
@@ -119,13 +170,25 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
         const subscription = event.data.object;
         const tenantId = Number(subscription.metadata?.tenantId);
         if (tenantId) {
-          await db
-            .update(tenants)
-            .set({
-              stripeSubscriptionId: subscription.id,
-              subscriptionStatus: mapStripeStatus(subscription.status),
-            })
-            .where(eq(tenants.id, tenantId));
+          if (subscription.metadata?.kind === "addon") {
+            await db
+              .update(tenants)
+              .set({
+                addonStripeSubscriptionId: subscription.id,
+                // mapStripeStatus only ever returns "active" | "past_due" | "cancelled" in
+                // practice (trialing collapses to "active") — the add-on has no trial state.
+                addonStatus: mapStripeStatus(subscription.status) as "active" | "past_due" | "cancelled",
+              })
+              .where(eq(tenants.id, tenantId));
+          } else {
+            await db
+              .update(tenants)
+              .set({
+                stripeSubscriptionId: subscription.id,
+                subscriptionStatus: mapStripeStatus(subscription.status),
+              })
+              .where(eq(tenants.id, tenantId));
+          }
         }
         break;
       }

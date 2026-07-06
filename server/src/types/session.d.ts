@@ -6,5 +6,6 @@ declare module "express-session" {
     tenantId?: number;
     role?: "admin" | "staff";
     isSuperAdmin?: boolean;
+    gmailOAuthState?: string;
   }
 }
