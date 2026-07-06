@@ -1,6 +1,7 @@
 {
   "name": "student-accommodation-recon",
   "private": true,
+  "type": "module",
   "workspaces": [
     "server",
     "client"
