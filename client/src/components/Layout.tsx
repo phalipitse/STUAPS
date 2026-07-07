@@ -13,7 +13,7 @@ export function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const daysLeft = trialDaysLeft(tenant);
-  const locked = isLocked(tenant);
+  const locked = isLocked(tenant, user?.isSuperAdmin);
 
   useEffect(() => {
     if (locked && location.pathname !== "/billing") {

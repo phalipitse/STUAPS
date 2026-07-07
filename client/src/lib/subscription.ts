@@ -7,8 +7,9 @@ export function trialDaysLeft(tenant: SessionTenant | null): number | null {
 }
 
 /** Mirrors the server's requireActiveSubscription check so the UI locks in step with the API. */
-export function isLocked(tenant: SessionTenant | null): boolean {
+export function isLocked(tenant: SessionTenant | null, isSuperAdmin?: boolean): boolean {
   if (!tenant) return false;
+  if (isSuperAdmin) return false;
   if (tenant.subscriptionStatus === "active") return false;
   if (tenant.subscriptionStatus === "past_due" || tenant.subscriptionStatus === "cancelled") {
     return true;
