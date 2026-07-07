@@ -13,7 +13,9 @@ import {
   isClaudeConfigured,
   extractExpenseFromDocument,
   extractExpenseFromText,
+  extractTransactionsFromBankStatement,
 } from "../lib/claudeExtraction.js";
+import { parseBankStatementCsv, BankStatementParseError } from "../lib/bankStatementParser.js";
 
 export const financialStatementsRouter = Router();
 financialStatementsRouter.use(requireAuth, requireActiveSubscription, requirePremiumAddon);
@@ -151,6 +153,52 @@ financialStatementsRouter.post("/expenses/extract-from-text", requireRole("admin
     next(err);
   }
 });
+
+// ---- Bank statement import ----
+
+const CSV_MIME_TYPES = ["text/csv", "application/csv", "application/vnd.ms-excel"];
+
+/**
+ * Parses an uploaded bank statement (CSV export, or a photographed/scanned PDF/image
+ * page) into a preview list of transactions. Nothing is saved here — same
+ * human-in-the-loop pattern as the other AI/CSV ingestion paths. The admin reviews
+ * the preview and picks which rows to import as expenses via a separate call to the
+ * existing POST /expenses endpoint (one row at a time; there's no bulk-insert here).
+ */
+financialStatementsRouter.post(
+  "/bank-statement/parse",
+  requireRole("admin"),
+  documentUpload.single("file"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "A file is required" });
+      }
+      const isCsv = CSV_MIME_TYPES.includes(req.file.mimetype) || req.file.originalname.toLowerCase().endsWith(".csv");
+
+      if (isCsv) {
+        try {
+          const rows = parseBankStatementCsv(req.file.buffer.toString("utf-8"));
+          return res.json({ transactions: rows });
+        } catch (err) {
+          if (err instanceof BankStatementParseError) {
+            return res.status(400).json({ error: err.message });
+          }
+          throw err;
+        }
+      }
+
+      if (!isClaudeConfigured()) {
+        return res.status(400).json({ error: "Scanning PDF/image bank statements is not configured on this server yet — export a CSV instead" });
+      }
+      const extracted = await extractTransactionsFromBankStatement(req.file.buffer, req.file.mimetype);
+      const transactions = extracted.map((t) => ({ ...t, dateParsed: DATE_RE.test(t.date) }));
+      res.json({ transactions });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // ---- Reports ----
 

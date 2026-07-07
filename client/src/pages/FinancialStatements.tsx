@@ -44,6 +44,18 @@ interface ExtractedExpense {
   confidence: "high" | "medium" | "low";
 }
 
+interface ParsedBankRow {
+  date: string;
+  description: string;
+  amount: number;
+  dateParsed: boolean;
+}
+
+interface PreviewRow extends ParsedBankRow {
+  selected: boolean;
+  category: string;
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -77,6 +89,12 @@ export function FinancialStatements() {
   const [listening, setListening] = useState(false);
   const [extractionNotice, setExtractionNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [statementRows, setStatementRows] = useState<PreviewRow[]>([]);
+  const [statementParsing, setStatementParsing] = useState(false);
+  const [statementImporting, setStatementImporting] = useState(false);
+  const [statementError, setStatementError] = useState<string | null>(null);
+  const statementInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -130,6 +148,64 @@ export function FinancialStatements() {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Voice input failed");
     } finally {
       setListening(false);
+    }
+  }
+
+  async function handleStatementSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStatementError(null);
+    setStatementRows([]);
+    setStatementParsing(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const { transactions } = await api.upload<{ transactions: ParsedBankRow[] }>(
+        "/financial-statements/bank-statement/parse",
+        form
+      );
+      setStatementRows(
+        transactions.map((t) => ({
+          ...t,
+          // Debits (money out) are the ones this app can turn into expenses; credits
+          // (money in) usually correspond to invoice payments already tracked
+          // elsewhere, so pre-select only debits to avoid double-counting revenue.
+          selected: t.amount < 0 && t.dateParsed,
+          category: "",
+        }))
+      );
+    } catch (err) {
+      setStatementError(err instanceof ApiError ? err.message : "Could not read that bank statement");
+    } finally {
+      setStatementParsing(false);
+      if (statementInputRef.current) statementInputRef.current.value = "";
+    }
+  }
+
+  function updateStatementRow(index: number, patch: Partial<PreviewRow>) {
+    setStatementRows((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  }
+
+  async function importSelectedStatementRows() {
+    setStatementError(null);
+    setStatementImporting(true);
+    try {
+      const toImport = statementRows.filter((r) => r.selected && r.amount < 0);
+      for (const row of toImport) {
+        await api.post("/financial-statements/expenses", {
+          date: row.dateParsed ? row.date : todayIso(),
+          category: row.category || "Uncategorized",
+          description: row.description || undefined,
+          amount: Math.abs(row.amount),
+          paid: true,
+        });
+      }
+      setStatementRows((rows) => rows.filter((r) => !(r.selected && r.amount < 0)));
+      await refresh();
+    } catch (err) {
+      setStatementError(err instanceof ApiError ? err.message : "Could not import the selected transactions");
+    } finally {
+      setStatementImporting(false);
     }
   }
 
@@ -351,6 +427,89 @@ export function FinancialStatements() {
           </tbody>
         </table>
       </div>
+
+      <h2 className="no-print">Import bank statement</h2>
+      <p className="muted no-print">
+        Upload a bank statement export (CSV) or a photographed/scanned statement page (PDF or
+        image) to preview its transactions. Only money-out rows (debits) can be imported as
+        expenses here — money-in rows are shown for reference but excluded, since revenue is
+        already tracked from your invoices and importing them too would double-count it.
+      </p>
+      <div className="inline-form no-print">
+        <label>
+          Upload statement
+          <input
+            ref={statementInputRef}
+            type="file"
+            accept=".csv,text/csv,image/jpeg,image/png,image/gif,image/webp,application/pdf"
+            onChange={handleStatementSelected}
+            disabled={statementParsing}
+          />
+        </label>
+        {statementParsing && <span className="muted">Reading statement…</span>}
+      </div>
+      {statementError && <p className="error no-print">{statementError}</p>}
+      {statementRows.length > 0 && (
+        <div className="no-print">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                  <th>Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statementRows.map((row, i) => {
+                  const isDebit = row.amount < 0;
+                  return (
+                    <tr key={i}>
+                      <td>
+                        {isDebit ? (
+                          <input
+                            type="checkbox"
+                            checked={row.selected}
+                            onChange={(e) => updateStatementRow(i, { selected: e.target.checked })}
+                          />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        {row.date}
+                        {!row.dateParsed && <span className="muted"> (unrecognised date)</span>}
+                      </td>
+                      <td>{row.description || "—"}</td>
+                      <td>{formatRand(Math.abs(row.amount))} {isDebit ? "out" : "in"}</td>
+                      <td>
+                        {isDebit ? (
+                          <input
+                            value={row.category}
+                            onChange={(e) => updateStatementRow(i, { category: e.target.value })}
+                            placeholder="Rent, Salaries, Utilities…"
+                          />
+                        ) : (
+                          <span className="muted">Not imported</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <button
+            type="button"
+            onClick={importSelectedStatementRows}
+            disabled={statementImporting || !statementRows.some((r) => r.selected && r.amount < 0)}
+          >
+            {statementImporting ? "Importing…" : "Import selected as expenses"}
+          </button>
+        </div>
+      )}
 
       <h3 className="no-print">Add expense</h3>
       {claudeConfigured ? (

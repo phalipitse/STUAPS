@@ -161,6 +161,35 @@ financial data leaving the app for that one request. Extraction always returns a
 The microphone button only appears in browsers that support
 `SpeechRecognition`/`webkitSpeechRecognition` (Chrome/Edge; not Firefox).
 
+#### Bank statement import
+
+Also gated behind the Premium add-on, and distinct from the Gmail statement inbox
+above — this is for a tenant uploading their own **business bank account**
+statement (not a student/funder payment statement) so its transactions can seed
+the expenses ledger. Upload a CSV export or a photographed/scanned PDF/image page
+under "Import bank statement"; nothing is saved until you click "Import selected
+as expenses" — same human-in-the-loop pattern as everything else AI-touched here.
+
+- **CSV** — parsed locally (`server/src/lib/bankStatementParser.ts`), no API call.
+  Detects columns by common header-name variants (`Date`/`Transaction Date`,
+  `Description`/`Narration`/`Details`, either a single signed `Amount` column or
+  separate `Debit`/`Credit` columns) since every bank exports differently, unlike
+  the fixed-format invoice CSV. Handles DD/MM/YYYY (SA convention), "01 Jul 2026"
+  style dates, and Rand-formatted amounts (`R -650.00`, parenthesized negatives).
+  Rows with a date it can't recognise are still shown, flagged, and left
+  unselected rather than dropped.
+- **PDF / photo** — sent to Claude's vision the same way as receipt scanning
+  (needs `ANTHROPIC_API_KEY`; shows a clear error if not configured, telling the
+  admin to export a CSV instead). Best-effort — statement layouts vary by bank, and
+  a long statement may need to be split into page-by-page uploads.
+
+Only **debits (money out)** are pre-selected and importable as expenses; credits
+(money in) are shown for reference but excluded, since revenue is already tracked
+from invoices and importing them too would double-count it. Each selected row
+needs a category (defaults to "Uncategorized" if left blank) and imports as one
+expense via the same endpoint the manual "Add expense" form uses — there's no
+bulk-insert endpoint, so importing many rows is one request per row.
+
 ## Setting up payroll
 
 No external account needed — `/payroll` works as soon as the Premium add-on is
@@ -268,6 +297,9 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - AI-assisted expense entry (Premium add-on): scan a photo/PDF of a receipt or
   speak a description into the microphone, Claude extracts date/category/
   description/amount for the admin to review before saving — see above.
+- Bank statement import (Premium add-on): upload a business bank statement as a
+  CSV export or a photographed/scanned PDF/image, preview the parsed transactions,
+  and import selected debits into the expenses ledger — see above.
 - Payroll (Premium add-on): employees, gross-to-net payslips with manual earning/
   deduction line items (no built-in tax calculator), printable payslip view.
 - Institution creation is a dropdown of the 26 South African public universities
