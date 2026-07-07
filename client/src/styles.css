@@ -115,6 +115,11 @@ button {
   color: var(--color-outstanding-text);
 }
 
+.success {
+  color: var(--color-paid-text);
+  font-weight: 700;
+}
+
 /* Auth pages */
 
 .auth-page {

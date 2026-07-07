@@ -137,9 +137,15 @@ export function Register() {
 
         {step === "otp" && (
           <form onSubmit={handleVerify}>
+            <p className="success">
+              {form.channel === "sms"
+                ? "Please check your phone for the verification code."
+                : form.channel === "both"
+                  ? "Please check your email and phone for the verification code."
+                  : "Please check your email for the verification code."}
+            </p>
             <p className="muted">
-              Enter the 6-digit code we sent to {form.channel === "sms" ? form.cell : form.email}.
-              It expires in 10 minutes.
+              Sent to {form.channel === "sms" ? form.cell : form.email}. It expires in 10 minutes.
             </p>
             <label>
               Verification code

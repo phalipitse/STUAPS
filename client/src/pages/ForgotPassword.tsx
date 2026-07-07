@@ -77,6 +77,7 @@ export function ForgotPassword() {
 
         {step === "reset" && (
           <form onSubmit={handleReset}>
+            <p className="success">Please check your email for the verification code.</p>
             {message && <p className="muted">{message}</p>}
             <label>
               Verification code

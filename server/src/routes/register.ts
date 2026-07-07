@@ -24,7 +24,10 @@ const startSchema = z.object({
   companyName: z.string().min(1),
   contactName: z.string().min(1),
   email: z.string().email(),
-  cell: z.string().min(6).optional(),
+  // The frontend sends "" (not undefined) for a blank optional field — preprocess
+  // it away before the min-length check runs, or an empty cell number would fail
+  // validation instead of being treated as "not provided".
+  cell: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(6).optional()),
   province: z.string().optional(),
   channel: z.enum(["email", "sms", "both"]),
   username: z.string().min(3),
