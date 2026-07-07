@@ -15,6 +15,7 @@ import { adminRouter } from "./routes/admin.js";
 import { teamRouter } from "./routes/team.js";
 import { billingRouter, paystackWebhookHandler } from "./routes/billing.js";
 import { emailIntegrationsRouter } from "./routes/emailIntegrations.js";
+import { financialStatementsRouter } from "./routes/financialStatements.js";
 
 const PgSession = connectPgSimple(session);
 
@@ -69,6 +70,7 @@ export function createApp() {
   app.use("/api/team", teamRouter);
   app.use("/api/billing", billingRouter);
   app.use("/api/email-integrations", emailIntegrationsRouter);
+  app.use("/api/financial-statements", financialStatementsRouter);
 
   // Centralized error handler — keeps ForbiddenError/CsvParseError messages
   // out of routes and off the client's back for anything unexpected.

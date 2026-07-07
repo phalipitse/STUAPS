@@ -108,7 +108,37 @@ annual plan — a subscription can't mix billing intervals within itself, so the
 can't just be a line item on an annual base subscription). Set
 `PAYSTACK_PLAN_CODE_ADDON_MONTHLY` and `PAYSTACK_PLAN_CODE_ADDON_ANNUAL_EXTRA` to two
 more recurring Plans to enable `/billing`'s "Add Premium" button. `tenants.addon_status`
-tracks it independently of the base `subscription_status`.
+tracks it independently of the base `subscription_status`; `requirePremiumAddon`
+middleware (`server/src/middleware/requirePremiumAddon.ts`) gates
+`/api/financial-statements/*` the same way `requireActiveSubscription` gates the base
+app. Payroll is not built yet — `/payroll` is still an upgrade-prompt placeholder.
+
+#### Financial statements
+
+Once the add-on is active, `/financial-statements` is a real (deliberately
+simplified) bookkeeping + reporting tool, not a placeholder:
+- **Expenses ledger** — tenant-wide (not per-institution) entries: date, category,
+  description, amount, and whether it's already been paid or just accrued.
+- **Income statement** (accrual basis) — revenue from invoiced totals in the date
+  range, expenses grouped by category, net income.
+- **Cash flow statement** (cash basis) — money that actually moved: paid invoices in
+  the range plus paid expenses.
+- **Balance sheet** (point-in-time) — accounts receivable (outstanding invoice
+  balances) + cash collected as assets, unpaid expenses as accounts-payable
+  liabilities, equity as the plug (assets − liabilities).
+
+All three reports are pure, unit-tested functions
+(`server/src/lib/financialStatements.ts` / `tests/financialStatements.test.ts`) fed by
+straightforward SQL aggregation — no hidden logic. **This is single-entry
+bookkeeping, not full double-entry accounting**, and there's one specific
+simplification worth knowing: the schema has no per-payment ledger, only a single
+`amountPaid` + `paidAt` snapshot per invoice. A fully-paid invoice's `paidAt` is
+reliable; a merely-partial one has no timestamp for *when* that partial payment
+happened, so cash flow falls back to the invoice's date for those. Good enough for
+day-to-day visibility, not for a historically-precise cash flow statement — a real
+payments table (one row per payment received, not one snapshot per invoice) would be
+the natural next step if that precision matters. The page itself says as much:
+"treat this as a planning tool, not filing-ready statements."
 
 ## PWA / Google Play
 
@@ -197,11 +227,15 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
   once a trial lapses unpaid, mirrored client-side so the whole app locks (not just
   individual API calls). Separate Premium add-on subscription (financial statements +
   payroll billing).
+- Financial statements (Premium add-on): an expenses ledger plus income statement,
+  cash flow, and balance sheet reports computed from real invoice + expense data —
+  see "Setting up billing" above for the specific simplifications.
 - Installable PWA (manifest, service worker, icons) — the shell only; see below.
 - Mobile-first navigation: a bottom tab bar with a "More" sheet on phone-sized
   viewports, full top nav on desktop — same routes, no separate mobile app.
-- Printable reports: Dashboard, Outstanding, and per-invoice recon each have a Print
-  button and a dedicated print stylesheet (chrome hidden, plain black-on-white tables).
+- Printable reports: Dashboard, Outstanding, per-invoice recon, and Financial
+  Statements each have a Print button and a dedicated print stylesheet (chrome
+  hidden, plain black-on-white tables).
 - Gmail statement inbox: connect a Gmail account, scan for funder statement emails,
   admin-approve each one before it's imported (CSV via the existing parser, PDF via a
   best-effort heuristic) — see "Setting up the Gmail statement inbox" below.
@@ -234,11 +268,14 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - **PDF statement parsing is a heuristic, not a guaranteed-correct parser** — see
   the Gmail inbox section above. Expect to tune `pdfStatementParser.ts` against real
   funder statement samples.
-- **Financial statements and payroll/tax tools themselves** — the Premium add-on is
-  billed and gated (`tenants.addon_status`), but the actual income statement/balance
-  sheet/cash-flow/payroll engines aren't built yet; `/financial-statements` and
-  `/payroll` are upgrade-prompt placeholders. Payroll/tax in particular needs real
+- **Payroll/tax tools** — the Premium add-on is billed and gated
+  (`tenants.addon_status`), and financial statements are built (see above), but
+  `/payroll` is still an upgrade-prompt placeholder. Payroll/tax needs real
   accounting sign-off before being presented as filing-ready (UIF/PAYE tables, SARS
   compliance) — treat any future version as an estimate tool, not a substitute for an
   accountant, unless independently verified.
+- **Financial statements are single-entry bookkeeping, not double-entry accounting**
+  — no chart of accounts, no per-payment ledger (see "Setting up billing" above for
+  exactly what that means for cash flow accuracy). Good for day-to-day visibility,
+  not a substitute for a qualified accountant's actual books.
 

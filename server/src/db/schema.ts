@@ -246,6 +246,28 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
 });
 
 // ---------------------------------------------------------------------------
+// Bookkeeping (Premium add-on: financial statements)
+// ---------------------------------------------------------------------------
+
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  // Tenant-wide, not per-institution — these are the accommodation provider's
+  // own business expenses (rent, salaries, ...), distinct from the per-institution
+  // student invoices the rest of the app reconciles.
+  tenantId: integer("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  description: text("description"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  // false = accrued but not yet paid (an accounts-payable liability on the
+  // balance sheet); true = already paid (a cash outflow on the cash flow statement).
+  paid: boolean("paid").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
 // Email inbox integration (Gmail/Outlook statement detection)
 // ---------------------------------------------------------------------------
 
@@ -323,6 +345,11 @@ export const detectedStatements = pgTable(
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
   institutions: many(institutions),
+  expenses: many(expenses),
+}));
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  tenant: one(tenants, { fields: [expenses.tenantId], references: [tenants.id] }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
