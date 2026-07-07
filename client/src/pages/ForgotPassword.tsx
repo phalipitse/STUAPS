@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
+import { PasswordInput } from "../components/PasswordInput";
 
 type Step = "request" | "reset" | "done";
 
@@ -89,8 +90,7 @@ export function ForgotPassword() {
             </label>
             <label>
               New password
-              <input
-                type="password"
+              <PasswordInput
                 minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}

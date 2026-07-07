@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../lib/api";
+import { PasswordInput } from "../components/PasswordInput";
 
 type Channel = "email" | "sms" | "both";
 type Step = "details" | "otp";
@@ -118,8 +119,7 @@ export function Register() {
             </label>
             <label>
               Choose a password
-              <input
-                type="password"
+              <PasswordInput
                 minLength={8}
                 value={form.password}
                 onChange={(e) => update("password", e.target.value)}

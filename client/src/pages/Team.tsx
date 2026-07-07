@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useInstitutions } from "../institutions/InstitutionContext";
 import { api, ApiError } from "../lib/api";
+import { PasswordInput } from "../components/PasswordInput";
 
 interface TeamMember {
   id: number;
@@ -146,8 +147,7 @@ export function Team() {
         </label>
         <label>
           Password
-          <input
-            type="password"
+          <PasswordInput
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
