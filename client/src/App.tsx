@@ -18,6 +18,7 @@ import { Billing } from "./pages/Billing";
 import { EmailInbox } from "./pages/EmailInbox";
 import { FinancialStatements } from "./pages/FinancialStatements";
 import { Payroll } from "./pages/Payroll";
+import { PayslipDetail } from "./pages/PayslipDetail";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -55,6 +56,7 @@ export function App() {
         <Route path="email-inbox" element={<EmailInbox />} />
         <Route path="financial-statements" element={<FinancialStatements />} />
         <Route path="payroll" element={<Payroll />} />
+        <Route path="payroll/payslips/:id" element={<PayslipDetail />} />
       </Route>
     </Routes>
   );

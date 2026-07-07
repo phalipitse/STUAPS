@@ -110,8 +110,8 @@ can't just be a line item on an annual base subscription). Set
 more recurring Plans to enable `/billing`'s "Add Premium" button. `tenants.addon_status`
 tracks it independently of the base `subscription_status`; `requirePremiumAddon`
 middleware (`server/src/middleware/requirePremiumAddon.ts`) gates
-`/api/financial-statements/*` the same way `requireActiveSubscription` gates the base
-app. Payroll is not built yet — `/payroll` is still an upgrade-prompt placeholder.
+`/api/financial-statements/*` and `/api/payroll/*` the same way
+`requireActiveSubscription` gates the base app.
 
 #### Financial statements
 
@@ -139,6 +139,41 @@ day-to-day visibility, not for a historically-precise cash flow statement — a 
 payments table (one row per payment received, not one snapshot per invoice) would be
 the natural next step if that precision matters. The page itself says as much:
 "treat this as a planning tool, not filing-ready statements."
+
+#### AI-assisted expense entry
+
+Also gated behind the Premium add-on. Two ways to fill in an expense without typing
+it manually — both prefill the form for the admin to review and edit, nothing is
+ever saved without an explicit click on "Add expense":
+- **Scan a document** — upload a photo or PDF of a receipt/invoice/statement.
+  Claude's vision reads it and extracts date, category, description, and amount.
+- **Use microphone** — the browser's native Web Speech API transcribes speech to
+  text (free, no API call for that part), then the transcript goes through the same
+  Claude extraction as a document.
+
+Both need `ANTHROPIC_API_KEY` set (get one at
+[console.anthropic.com](https://console.anthropic.com)); without it, the expense
+form still works, it just shows "aren't configured on this server yet" instead of
+the scan/microphone controls. **Every scanned document or voice transcript is sent
+to Anthropic's API for processing** — real per-call cost, and it's your tenant's
+financial data leaving the app for that one request. Extraction always returns a
+`confidence` (high/medium/low) alongside the fields, shown in the review notice.
+The microphone button only appears in browsers that support
+`SpeechRecognition`/`webkitSpeechRecognition` (Chrome/Edge; not Firefox).
+
+## Setting up payroll
+
+No external account needed — `/payroll` works as soon as the Premium add-on is
+active. Deliberately **no built-in PAYE/UIF calculator**: add an employee (name, ID
+number, job title, start date, monthly salary), then "Generate payslip" for a given
+month with the gross salary prefilled (editable) and any earnings (overtime, bonus)
+or deductions (PAYE, UIF, loan repayments, ...) added as manual line items — net pay
+is gross + earnings − deductions. Payslips are viewable and printable
+(`/payroll/payslips/:id`). Deactivating an employee keeps their past payslips intact
+(soft-delete, not a hard delete). If you want tax withholding calculated
+automatically in the future, that needs real SARS PAYE table logic and should get
+sign-off from a payroll professional before being trusted — deliberately out of
+scope here given how wrong a silent miscalculation could go.
 
 ## PWA / Google Play
 
@@ -230,12 +265,21 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - Financial statements (Premium add-on): an expenses ledger plus income statement,
   cash flow, and balance sheet reports computed from real invoice + expense data —
   see "Setting up billing" above for the specific simplifications.
+- AI-assisted expense entry (Premium add-on): scan a photo/PDF of a receipt or
+  speak a description into the microphone, Claude extracts date/category/
+  description/amount for the admin to review before saving — see above.
+- Payroll (Premium add-on): employees, gross-to-net payslips with manual earning/
+  deduction line items (no built-in tax calculator), printable payslip view.
+- Institution creation is a dropdown of the 26 South African public universities
+  (plus an "Other" free-text fallback), not open free text — see
+  `client/src/lib/southAfricanUniversities.ts`. The tenant's company name is shown
+  in the header, just below the institution picker.
 - Installable PWA (manifest, service worker, icons) — the shell only; see below.
 - Mobile-first navigation: a bottom tab bar with a "More" sheet on phone-sized
   viewports, full top nav on desktop — same routes, no separate mobile app.
-- Printable reports: Dashboard, Outstanding, per-invoice recon, and Financial
-  Statements each have a Print button and a dedicated print stylesheet (chrome
-  hidden, plain black-on-white tables).
+- Printable reports: Dashboard, Outstanding, per-invoice recon, Financial
+  Statements, and payslips each have a Print button and a dedicated print
+  stylesheet (chrome hidden, plain black-on-white tables).
 - Gmail statement inbox: connect a Gmail account, scan for funder statement emails,
   admin-approve each one before it's imported (CSV via the existing parser, PDF via a
   best-effort heuristic) — see "Setting up the Gmail statement inbox" below.
@@ -268,14 +312,16 @@ instead of actually being emailed/texted. Set those env vars to send real codes.
 - **PDF statement parsing is a heuristic, not a guaranteed-correct parser** — see
   the Gmail inbox section above. Expect to tune `pdfStatementParser.ts` against real
   funder statement samples.
-- **Payroll/tax tools** — the Premium add-on is billed and gated
-  (`tenants.addon_status`), and financial statements are built (see above), but
-  `/payroll` is still an upgrade-prompt placeholder. Payroll/tax needs real
-  accounting sign-off before being presented as filing-ready (UIF/PAYE tables, SARS
-  compliance) — treat any future version as an estimate tool, not a substitute for an
-  accountant, unless independently verified.
+- **No PAYE/UIF tax calculator in payroll, by design** — deductions are manual line
+  items the admin enters per payslip (see "Setting up payroll" above). Automating
+  SARS tax withholding needs real accounting/payroll sign-off given the compliance
+  risk of a silent miscalculation; deliberately not attempted here.
 - **Financial statements are single-entry bookkeeping, not double-entry accounting**
   — no chart of accounts, no per-payment ledger (see "Setting up billing" above for
   exactly what that means for cash flow accuracy). Good for day-to-day visibility,
   not a substitute for a qualified accountant's actual books.
+- **AI expense extraction is untested against a live Anthropic API key** — same
+  reason as Paystack/Gmail above; the code path (tool-use forced structured output,
+  lazy client init) is complete and unit-tested for its error paths, but needs your
+  own `ANTHROPIC_API_KEY` to exercise a real document/voice extraction.
 

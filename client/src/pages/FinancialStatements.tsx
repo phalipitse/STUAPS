@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../lib/api";
 import { formatRand } from "../lib/format";
+import { isSpeechRecognitionSupported, recognizeSpeech } from "../lib/speechRecognition";
 
 interface Expense {
   id: number;
@@ -35,6 +36,14 @@ interface BalanceSheet {
   equity: number;
 }
 
+interface ExtractedExpense {
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  confidence: "high" | "medium" | "low";
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -62,6 +71,67 @@ export function FinancialStatements() {
   const [paid, setPaid] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [claudeConfigured, setClaudeConfigured] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [extractionNotice, setExtractionNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    api
+      .get<{ claudeConfigured: boolean }>("/financial-statements/status")
+      .then((res) => setClaudeConfigured(res.claudeConfigured))
+      .catch(() => {});
+  }, [unlocked]);
+
+  function applyExtracted(extracted: ExtractedExpense) {
+    setExpenseDate(extracted.date || todayIso());
+    setCategory(extracted.category || "");
+    setDescription(extracted.description || "");
+    setAmount(extracted.amount ? String(extracted.amount) : "");
+    setExtractionNotice(
+      `Extracted (${extracted.confidence} confidence) — review the fields below before saving.`
+    );
+  }
+
+  async function handleDocumentSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setScanning(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const extracted = await api.upload<ExtractedExpense>(
+        "/financial-statements/expenses/extract-from-document",
+        form
+      );
+      applyExtracted(extracted);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not read that document");
+    } finally {
+      setScanning(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleUseMicrophone() {
+    setError(null);
+    setListening(true);
+    try {
+      const transcript = await recognizeSpeech();
+      const extracted = await api.post<ExtractedExpense>("/financial-statements/expenses/extract-from-text", {
+        text: transcript,
+      });
+      applyExtracted(extracted);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Voice input failed");
+    } finally {
+      setListening(false);
+    }
+  }
 
   async function refresh() {
     const [expenseRows, income, cash, balance] = await Promise.all([
@@ -98,6 +168,7 @@ export function FinancialStatements() {
       setDescription("");
       setAmount("");
       setPaid(true);
+      setExtractionNotice(null);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not add expense");
@@ -282,6 +353,31 @@ export function FinancialStatements() {
       </div>
 
       <h3 className="no-print">Add expense</h3>
+      {claudeConfigured ? (
+        <div className="inline-form no-print">
+          <label>
+            Scan a document
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+              onChange={handleDocumentSelected}
+              disabled={scanning}
+            />
+          </label>
+          {isSpeechRecognitionSupported() && (
+            <button type="button" onClick={handleUseMicrophone} disabled={listening}>
+              {listening ? "Listening…" : "🎤 Use microphone"}
+            </button>
+          )}
+          {scanning && <span className="muted">Reading document…</span>}
+        </div>
+      ) : (
+        <p className="muted no-print">
+          Photo/PDF scanning and voice entry aren't configured on this server yet.
+        </p>
+      )}
+      {extractionNotice && <p className="muted no-print">{extractionNotice}</p>}
       <form className="inline-form no-print" onSubmit={addExpense}>
         <label>
           Date

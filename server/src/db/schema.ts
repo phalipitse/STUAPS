@@ -45,6 +45,8 @@ export const detectedStatementStatusEnum = pgEnum("detected_statement_status", [
   "import_failed",
 ]);
 
+export const payslipLineTypeEnum = pgEnum("payslip_line_type", ["earning", "deduction"]);
+
 // ---------------------------------------------------------------------------
 // Tenants (accommodation providers) and users
 // ---------------------------------------------------------------------------
@@ -268,6 +270,63 @@ export const expenses = pgTable("expenses", {
 });
 
 // ---------------------------------------------------------------------------
+// Payroll (Premium add-on): employees and generated payslips
+// ---------------------------------------------------------------------------
+
+export const employees = pgTable("employees", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  idNumber: varchar("id_number", { length: 32 }).notNull(),
+  jobTitle: varchar("job_title", { length: 255 }),
+  startDate: date("start_date"),
+  monthlySalary: numeric("monthly_salary", { precision: 12, scale: 2 }).notNull(),
+  // Soft-deactivate rather than delete, so past payslips keep a valid employee reference.
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const payslips = pgTable(
+  "payslips",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    employeeId: integer("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    // First day of the pay period's month, e.g. 2026-07-01 for July 2026.
+    periodStart: date("period_start").notNull(),
+    // Snapshot of the employee's monthly salary at the time this payslip was
+    // generated — deliberately not a live reference, so a later salary change
+    // doesn't rewrite history.
+    grossSalary: numeric("gross_salary", { precision: 12, scale: 2 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    employeePeriodUnique: uniqueIndex("payslips_employee_period_unique").on(
+      t.employeeId,
+      t.periodStart
+    ),
+  })
+);
+
+export const payslipLineItems = pgTable("payslip_line_items", {
+  id: serial("id").primaryKey(),
+  payslipId: integer("payslip_id")
+    .notNull()
+    .references(() => payslips.id, { onDelete: "cascade" }),
+  // No built-in PAYE/UIF calculation — deductions (and any extra earnings like
+  // overtime or a bonus) are manual line items the admin enters per payslip.
+  type: payslipLineTypeEnum("type").notNull(),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+});
+
+// ---------------------------------------------------------------------------
 // Email inbox integration (Gmail/Outlook statement detection)
 // ---------------------------------------------------------------------------
 
@@ -346,6 +405,23 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
   institutions: many(institutions),
   expenses: many(expenses),
+  employees: many(employees),
+  payslips: many(payslips),
+}));
+
+export const employeesRelations = relations(employees, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [employees.tenantId], references: [tenants.id] }),
+  payslips: many(payslips),
+}));
+
+export const payslipsRelations = relations(payslips, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [payslips.tenantId], references: [tenants.id] }),
+  employee: one(employees, { fields: [payslips.employeeId], references: [employees.id] }),
+  lineItems: many(payslipLineItems),
+}));
+
+export const payslipLineItemsRelations = relations(payslipLineItems, ({ one }) => ({
+  payslip: one(payslips, { fields: [payslipLineItems.payslipId], references: [payslips.id] }),
 }));
 
 export const expensesRelations = relations(expenses, ({ one }) => ({

@@ -43,6 +43,13 @@
       "when": 1783385357592,
       "tag": "0005_careful_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783387168487,
+      "tag": "0006_next_captain_flint",
+      "breakpoints": true
     }
   ]
 }

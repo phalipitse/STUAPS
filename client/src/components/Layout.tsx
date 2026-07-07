@@ -43,18 +43,23 @@ export function Layout() {
       <header className="app-header">
         <div className="brand">Student Accommodation Recon</div>
 
-        {!locked && institutions.length > 0 && (
-          <select
-            className="institution-select"
-            value={selectedId ?? ""}
-            onChange={(e) => setSelectedId(Number(e.target.value))}
-          >
-            {institutions.map((inst) => (
-              <option key={inst.id} value={inst.id}>
-                {inst.invoicePrefix} — {inst.name}
-              </option>
-            ))}
-          </select>
+        {!locked && (
+          <div className="institution-picker-group">
+            {institutions.length > 0 && (
+              <select
+                className="institution-select"
+                value={selectedId ?? ""}
+                onChange={(e) => setSelectedId(Number(e.target.value))}
+              >
+                {institutions.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.invoicePrefix} — {inst.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {tenant && <div className="client-name">{tenant.companyName}</div>}
+          </div>
         )}
 
         {!locked && (

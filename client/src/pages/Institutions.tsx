@@ -1,13 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { useInstitutions } from "../institutions/InstitutionContext";
 import { api, ApiError } from "../lib/api";
+import { SOUTH_AFRICAN_UNIVERSITIES, OTHER_INSTITUTION_OPTION } from "../lib/southAfricanUniversities";
 
 export function Institutions() {
   const { institutions, refresh } = useInstitutions();
-  const [name, setName] = useState("");
+  const [selected, setSelected] = useState("");
+  const [customName, setCustomName] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const isOther = selected === OTHER_INSTITUTION_OPTION;
+  const name = isOther ? customName : selected;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -15,7 +20,8 @@ export function Institutions() {
     setSubmitting(true);
     try {
       await api.post("/institutions", { name, invoicePrefix });
-      setName("");
+      setSelected("");
+      setCustomName("");
       setInvoicePrefix("");
       await refresh();
     } catch (err) {
@@ -57,9 +63,25 @@ export function Institutions() {
       <h2>Add institution</h2>
       <form className="inline-form" onSubmit={handleSubmit}>
         <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          University / institution
+          <select value={selected} onChange={(e) => setSelected(e.target.value)} required>
+            <option value="" disabled>
+              Select…
+            </option>
+            {SOUTH_AFRICAN_UNIVERSITIES.map((uni) => (
+              <option key={uni} value={uni}>
+                {uni}
+              </option>
+            ))}
+            <option value={OTHER_INSTITUTION_OPTION}>{OTHER_INSTITUTION_OPTION}</option>
+          </select>
         </label>
+        {isOther && (
+          <label>
+            Institution name
+            <input value={customName} onChange={(e) => setCustomName(e.target.value)} required />
+          </label>
+        )}
         <label>
           Invoice prefix
           <input

@@ -250,6 +250,14 @@ button {
   color: transparent;
 }
 
+.institution-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .institution-select {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--color-border);
@@ -260,6 +268,16 @@ button {
      item with the default min-width:auto, refuses to shrink below that --
      forcing the whole header (and page) wider than the viewport on mobile. */
   min-width: 0;
+  max-width: 100%;
+}
+
+.client-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   max-width: 100%;
 }
 

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { and, desc, eq, gte, isNotNull, isNull, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
@@ -8,9 +9,19 @@ import { requireRole } from "../middleware/requireRole.js";
 import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { requirePremiumAddon } from "../middleware/requirePremiumAddon.js";
 import { computeIncomeStatement, computeCashFlow, computeBalanceSheet } from "../lib/financialStatements.js";
+import {
+  isClaudeConfigured,
+  extractExpenseFromDocument,
+  extractExpenseFromText,
+} from "../lib/claudeExtraction.js";
 
 export const financialStatementsRouter = Router();
 financialStatementsRouter.use(requireAuth, requireActiveSubscription, requirePremiumAddon);
+
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -86,6 +97,56 @@ financialStatementsRouter.delete("/expenses/:id", requireRole("admin"), async (r
     if (!row) return res.status(404).json({ error: "Not found" });
     await db.delete(expenses).where(eq(expenses.id, row.id));
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+financialStatementsRouter.get("/status", (_req, res) => {
+  res.json({ claudeConfigured: isClaudeConfigured() });
+});
+
+/**
+ * AI-assisted expense entry: reads a photographed/scanned source document
+ * (receipt, invoice, statement) and returns suggested expense fields for the
+ * admin to review — nothing is saved here, same human-in-the-loop pattern as
+ * the Gmail statement inbox. The document itself is sent to Anthropic's API
+ * for processing and is not stored anywhere by this app.
+ */
+financialStatementsRouter.post(
+  "/expenses/extract-from-document",
+  requireRole("admin"),
+  documentUpload.single("file"),
+  async (req, res, next) => {
+    try {
+      if (!isClaudeConfigured()) {
+        return res.status(400).json({ error: "Document scanning is not configured on this server yet" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "A file is required" });
+      }
+      const extracted = await extractExpenseFromDocument(req.file.buffer, req.file.mimetype);
+      res.json(extracted);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+const extractFromTextSchema = z.object({ text: z.string().min(1).max(2000) });
+
+/** Same as extract-from-document, but from a transcribed spoken description rather than a file. */
+financialStatementsRouter.post("/expenses/extract-from-text", requireRole("admin"), async (req, res, next) => {
+  try {
+    if (!isClaudeConfigured()) {
+      return res.status(400).json({ error: "Voice extraction is not configured on this server yet" });
+    }
+    const parsed = extractFromTextSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "text is required" });
+    }
+    const extracted = await extractExpenseFromText(parsed.data.text);
+    res.json(extracted);
   } catch (err) {
     next(err);
   }
