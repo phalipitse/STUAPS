@@ -4,6 +4,9 @@ import { useInstitutions } from "../institutions/InstitutionContext";
 import { api, ApiError } from "../lib/api";
 import { formatRand } from "../lib/format";
 
+const NO_INSTITUTION_MESSAGE =
+  "Add an institution first — an invoice needs to belong to one before you can upload it.";
+
 interface InvoiceRow {
   id: number;
   invoiceNumber: string;
@@ -34,7 +37,11 @@ export function Invoices() {
 
   async function handleUpload(e: FormEvent) {
     e.preventDefault();
-    if (!file || !selectedId) return;
+    if (!selectedId) {
+      setError(NO_INSTITUTION_MESSAGE);
+      return;
+    }
+    if (!file) return;
     setError(null);
     setUploading(true);
     try {
@@ -55,17 +62,24 @@ export function Invoices() {
     <div className="page">
       <h1>Invoices</h1>
 
+      {!selectedId && (
+        <p className="error">
+          {NO_INSTITUTION_MESSAGE} <Link to="/institutions">Add one here →</Link>
+        </p>
+      )}
+
       <form className="inline-form" onSubmit={handleUpload}>
         <label>
           Upload monthly invoice CSV
           <input
             type="file"
             accept=".csv"
+            disabled={!selectedId}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
         {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={!file || uploading}>
+        <button type="submit" disabled={!file || uploading || !selectedId}>
           {uploading ? "Uploading…" : "Upload"}
         </button>
       </form>
