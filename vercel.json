@@ -3,6 +3,7 @@
   "buildCommand": "npm run build:client && npm run db:migrate && npm run seed --workspace server",
   "outputDirectory": "client/dist",
   "rewrites": [
+    { "source": "/api/:path*", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
