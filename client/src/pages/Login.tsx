@@ -10,35 +10,19 @@ export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [debugLog, setDebugLog] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
-  function log(msg: string) {
-    setDebugLog((prev) => [...prev, `${new Date().toISOString().slice(11, 23)} ${msg}`]);
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    log("submit clicked");
     setError(null);
     setSubmitting(true);
     try {
-      log("calling login()");
       await login(username, password);
-      log("login() resolved, navigating");
       navigate("/");
     } catch (err) {
-      const detail =
-        err instanceof ApiError
-          ? `ApiError(${err.status}): ${err.message}`
-          : err instanceof Error
-            ? `${err.name}: ${err.message}`
-            : String(err);
-      log(`caught error: ${detail}`);
       setError(err instanceof ApiError ? err.message : "Login failed");
     } finally {
       setSubmitting(false);
-      log("submitting=false");
     }
   }
 
@@ -73,25 +57,6 @@ export function Login() {
         <p className="muted small">
           New accommodation provider? <Link to="/register">Register here →</Link>
         </p>
-
-        {debugLog.length > 0 && (
-          <pre
-            style={{
-              marginTop: "1rem",
-              padding: "0.5rem",
-              background: "#111",
-              color: "#0f0",
-              fontSize: "0.7rem",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-all",
-              borderRadius: "6px",
-              maxHeight: "220px",
-              overflowY: "auto",
-            }}
-          >
-            {debugLog.join("\n")}
-          </pre>
-        )}
       </form>
     </div>
   );

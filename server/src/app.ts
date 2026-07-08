@@ -60,7 +60,7 @@ export function createApp() {
 
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-  app.use("/api/auth", authRouter);
+  app.use("/api/session", authRouter);
   app.use("/api/register", registerRouter);
   app.use("/api/institutions", institutionsRouter);
   app.use("/api/properties", propertiesRouter);

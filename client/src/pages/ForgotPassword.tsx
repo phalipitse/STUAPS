@@ -22,7 +22,7 @@ export function ForgotPassword() {
     setSubmitting(true);
     try {
       const res = await api.post<{ resetToken: string; message: string }>(
-        "/auth/forgot-password/start",
+        "/session/forgot-password/start",
         { usernameOrEmail }
       );
       setResetToken(res.resetToken);
@@ -40,7 +40,7 @@ export function ForgotPassword() {
     setError(null);
     setSubmitting(true);
     try {
-      await api.post("/auth/forgot-password/verify", { resetToken, code, newPassword });
+      await api.post("/session/forgot-password/verify", { resetToken, code, newPassword });
       setStep("done");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reset password");

@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     api
-      .get<{ user: SessionUser; tenant: SessionTenant | null }>("/auth/me")
+      .get<{ user: SessionUser; tenant: SessionTenant | null }>("/session/me")
       .then((res) => {
         setUser(res.user);
         setTenant(res.tenant);
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(username: string, password: string) {
     const res = await api.post<{ user: SessionUser; tenant: SessionTenant | null }>(
-      "/auth/login",
+      "/session/login",
       { username, password }
     );
     setUser(res.user);
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    await api.post("/auth/logout");
+    await api.post("/session/logout");
     setUser(null);
     setTenant(null);
   }
