@@ -29,7 +29,7 @@ export function Login() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Student Accommodation Recon</h1>
+        <h1>STUAPS</h1>
         <p className="muted">Sign in with your username and password.</p>
 
         <label>

@@ -41,7 +41,7 @@ export function Layout() {
       )}
 
       <header className="app-header">
-        <div className="brand">Student Accommodation Recon</div>
+        <div className="brand">STUAPS</div>
 
         {!locked && (
           <div className="institution-picker-group">

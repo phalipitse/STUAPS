@@ -31,7 +31,7 @@ export async function requireActiveSubscription(req: Request, res: Response, nex
   }
 
   res.status(402).json({
-    error: "Your trial has ended. Subscribe to keep using Student Accommodation Recon.",
+    error: "Your trial has ended. Subscribe to keep using STUAPS.",
     code: "SUBSCRIPTION_REQUIRED",
   });
 }

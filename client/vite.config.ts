@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/favicon-32.png", "icons/apple-touch-icon.png"],
       manifest: {
-        name: "Student Accommodation Recon",
-        short_name: "Stuaps",
+        name: "STUAPS",
+        short_name: "STUAPS",
         description:
           "Multi-tenant invoice reconciliation for student accommodation providers.",
         theme_color: "#6C5CE7",
