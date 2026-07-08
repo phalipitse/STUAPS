@@ -158,6 +158,10 @@ button {
   color: transparent;
 }
 
+.auth-logo {
+  margin-bottom: 1.2rem;
+}
+
 .auth-card form {
   display: flex;
   flex-direction: column;

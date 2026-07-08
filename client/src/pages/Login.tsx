@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../lib/api";
 import { PasswordInput } from "../components/PasswordInput";
+import { Logo } from "../components/Logo";
 
 export function Login() {
   const { login } = useAuth();
@@ -29,7 +30,7 @@ export function Login() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>STUAPS</h1>
+        <Logo size={40} className="auth-logo" />
         <p className="muted">Sign in with your username and password.</p>
 
         <label>

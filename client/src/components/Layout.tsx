@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useInstitutions } from "../institutions/InstitutionContext";
 import { isLocked, trialDaysLeft } from "../lib/subscription";
 import { HomeIcon, InvoiceIcon, AlertIcon, InboxIcon, MenuIcon } from "./icons";
+import { Logo } from "./Logo";
 
 export function Layout() {
   const { user, tenant, logout } = useAuth();
@@ -41,7 +42,7 @@ export function Layout() {
       )}
 
       <header className="app-header">
-        <div className="brand">STUAPS</div>
+        <Logo size={28} />
 
         {!locked && (
           <div className="institution-picker-group">
