@@ -65,6 +65,45 @@ export async function sendOtpEmail(to: string, code: string): Promise<SendResult
 }
 
 /**
+ * Sends a username reminder to an email address. Uses SendGrid when configured;
+ * otherwise falls back to logging to the server console, same as sendOtpEmail.
+ */
+export async function sendUsernameEmail(to: string, username: string): Promise<SendResult> {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const from = process.env.SENDGRID_FROM_EMAIL;
+
+  if (!apiKey || !from) {
+    console.log(`[otp:dev-console] username reminder for ${to}: ${username}`);
+    return { ok: true, provider: "console" };
+  }
+
+  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: from },
+      subject: "Your username",
+      content: [
+        {
+          type: "text/plain",
+          value: `Your username is: ${username}`,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`SendGrid send failed (${response.status}): ${body}`);
+  }
+  return { ok: true, provider: "sendgrid" };
+}
+
+/**
  * Sends an OTP code via SMS. Uses Africa's Talking when AFRICASTALKING_API_KEY is
  * configured; otherwise falls back to logging the code to the server console.
  */

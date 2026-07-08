@@ -52,7 +52,8 @@ export function Login() {
         </button>
 
         <p className="muted small">
-          <Link to="/forgot-password">Forgot username or password?</Link>
+          <Link to="/forgot-username">Forgot username?</Link> ·{" "}
+          <Link to="/forgot-password">Forgot password?</Link>
         </p>
         <p className="muted small">
           New accommodation provider? <Link to="/register">Register here →</Link>

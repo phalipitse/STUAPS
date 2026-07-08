@@ -6,6 +6,7 @@ import { users, tenants } from "../db/schema.js";
 import { hashPassword, verifyPassword } from "../lib/auth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { startOtp, verifyOtp } from "../lib/otpFlow.js";
+import { sendUsernameEmail } from "../lib/otp.js";
 
 export const authRouter = Router();
 
@@ -57,6 +58,27 @@ authRouter.post("/logout", (req, res) => {
     res.clearCookie("connect.sid");
     res.json({ ok: true });
   });
+});
+
+const GENERIC_USERNAME_MESSAGE =
+  "If an account matches that email, the username has been sent to it.";
+
+const forgotUsernameSchema = z.object({
+  email: z.string().email(),
+});
+
+authRouter.post("/forgot-username", async (req, res) => {
+  const parsed = forgotUsernameSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "A valid email is required" });
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email));
+  if (user) {
+    await sendUsernameEmail(parsed.data.email, user.username);
+  }
+
+  res.json({ message: GENERIC_USERNAME_MESSAGE });
 });
 
 const GENERIC_RESET_MESSAGE =

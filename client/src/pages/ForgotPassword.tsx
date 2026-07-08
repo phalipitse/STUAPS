@@ -57,8 +57,8 @@ export function ForgotPassword() {
         {step === "request" && (
           <form onSubmit={handleRequest}>
             <p className="muted">
-              Enter your username or the email on your account and we'll send you a
-              verification code.
+              Know your username? Enter your username or the email on your account and
+              we'll send you a verification code.
             </p>
             <label>
               Username or email
@@ -112,6 +112,11 @@ export function ForgotPassword() {
           </div>
         )}
 
+        {step === "request" && (
+          <p className="muted small">
+            <Link to="/forgot-username">Forgot username instead?</Link>
+          </p>
+        )}
         <p className="muted small">
           <Link to="/login">← Back to sign in</Link>
         </p>
