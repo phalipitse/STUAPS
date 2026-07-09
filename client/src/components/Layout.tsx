@@ -27,8 +27,11 @@ export function Layout() {
   }, [location.pathname]);
 
   async function handleLogout() {
-    await logout();
-    navigate("/login");
+    try {
+      await logout();
+    } finally {
+      navigate("/login");
+    }
   }
 
   return (

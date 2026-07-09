@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { formatRand } from "../lib/format";
 
 interface LineItem {
@@ -37,6 +37,7 @@ export function InvoiceDetail() {
   const { id } = useParams();
   const [data, setData] = useState<InvoiceDetailResponse | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     const res = await api.get<InvoiceDetailResponse>(`/invoices/${id}`);
@@ -50,9 +51,12 @@ export function InvoiceDetail() {
 
   async function markPaid() {
     setUpdating(true);
+    setError(null);
     try {
       await api.patch(`/invoices/${id}/status`, { status: "paid" });
       await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update invoice status");
     } finally {
       setUpdating(false);
     }
@@ -60,9 +64,12 @@ export function InvoiceDetail() {
 
   async function markOutstanding() {
     setUpdating(true);
+    setError(null);
     try {
       await api.patch(`/invoices/${id}/status`, { status: "outstanding", amountPaid: 0 });
       await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update invoice status");
     } finally {
       setUpdating(false);
     }
@@ -103,6 +110,7 @@ export function InvoiceDetail() {
         </div>
       </div>
 
+      {error && <p className="error">{error}</p>}
       <div className="inline-form">
         <button onClick={markPaid} disabled={updating || invoice.status === "paid"}>
           Mark paid

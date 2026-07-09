@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { formatRand } from "../lib/format";
 
 interface PayslipResponse {
@@ -14,6 +14,7 @@ export function PayslipDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<PayslipResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<PayslipResponse>(`/payroll/payslips/${id}`).then(setData);
@@ -21,8 +22,13 @@ export function PayslipDetail() {
 
   async function remove() {
     if (!confirm("Delete this payslip?")) return;
-    await api.delete(`/payroll/payslips/${id}`);
-    navigate("/payroll");
+    setError(null);
+    try {
+      await api.delete(`/payroll/payslips/${id}`);
+      navigate("/payroll");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not delete this payslip");
+    }
   }
 
   if (!data) return <div className="page">Loading…</div>;
@@ -37,6 +43,7 @@ export function PayslipDetail() {
           <button onClick={() => window.print()}>Print</button> <button onClick={remove}>Delete</button>
         </div>
       </div>
+      {error && <p className="error">{error}</p>}
 
       {employee && (
         <p className="muted">

@@ -75,13 +75,24 @@ export function EmailInbox() {
 
   async function disconnectGmail() {
     if (!confirm("Disconnect Gmail? Detected statements already reviewed stay on record.")) return;
-    await api.delete("/email-integrations/connect/gmail");
-    await refresh();
+    setError(null);
+    try {
+      await api.delete("/email-integrations/connect/gmail");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not disconnect Gmail");
+    }
   }
 
   async function saveKeywords() {
-    await api.patch("/email-integrations/connect/gmail", { watchKeywords: keywords });
-    await refresh();
+    setError(null);
+    try {
+      await api.patch("/email-integrations/connect/gmail", { watchKeywords: keywords });
+      setNotice("Watch senders saved.");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not save watch senders");
+    }
   }
 
   async function scanNow() {
@@ -125,9 +136,12 @@ export function EmailInbox() {
 
   async function reject(id: number) {
     setBusyId(id);
+    setError(null);
     try {
       await api.post(`/email-integrations/detected/${id}/reject`);
       await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not reject this statement");
     } finally {
       setBusyId(null);
     }

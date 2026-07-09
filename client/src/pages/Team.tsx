@@ -58,18 +58,30 @@ export function Team() {
     const next = member.institutionIds.includes(id)
       ? member.institutionIds.filter((i) => i !== id)
       : [...member.institutionIds, id];
-    await api.patch(`/team/${member.id}/access`, { institutionIds: next });
-    await refresh();
+    setError(null);
+    try {
+      await api.patch(`/team/${member.id}/access`, { institutionIds: next });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update access");
+    }
   }
 
-  async function removeMember(id: number) {
-    await api.delete(`/team/${id}`);
-    await refresh();
+  async function removeMember(id: number, username: string) {
+    if (!confirm(`Remove ${username} from your team? They'll lose access immediately.`)) return;
+    setError(null);
+    try {
+      await api.delete(`/team/${id}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not remove staff member");
+    }
   }
 
   return (
     <div className="page">
       <h1>Team</h1>
+      {error && <p className="error">{error}</p>}
 
       <div className="table-scroll">
       <table className="data-table">
@@ -113,7 +125,7 @@ export function Team() {
                         {inst.invoicePrefix}
                       </label>
                     ))}
-                    <button onClick={() => removeMember(m.id)}>Remove</button>
+                    <button onClick={() => removeMember(m.id, m.username)}>Remove</button>
                   </>
                 )}
               </td>

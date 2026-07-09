@@ -254,8 +254,14 @@ export function FinancialStatements() {
   }
 
   async function removeExpense(id: number) {
-    await api.delete(`/financial-statements/expenses/${id}`);
-    await refresh();
+    if (!confirm("Delete this expense?")) return;
+    setError(null);
+    try {
+      await api.delete(`/financial-statements/expenses/${id}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not delete this expense");
+    }
   }
 
   if (!unlocked) {
@@ -390,6 +396,7 @@ export function FinancialStatements() {
       )}
 
       <h2>Expenses</h2>
+      {error && <p className="error">{error}</p>}
       <div className="table-scroll">
         <table className="data-table">
           <thead>

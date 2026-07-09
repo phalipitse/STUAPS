@@ -68,7 +68,7 @@ export function Register() {
     <div className="auth-page">
       <div className="auth-card">
         <h1>Register your business</h1>
-        <p className="muted">Start a free 7-day trial — no card required.</p>
+        <p className="muted">Start a free 14-day trial — no card required.</p>
 
         {step === "details" && (
           <form onSubmit={handleStart}>

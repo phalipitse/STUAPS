@@ -92,8 +92,14 @@ export function Payroll() {
   }
 
   async function deactivateEmployee(id: number) {
-    await api.patch(`/payroll/employees/${id}`, { active: false });
-    await refresh();
+    if (!confirm("Deactivate this employee? They'll no longer appear for new payslips.")) return;
+    setError(null);
+    try {
+      await api.patch(`/payroll/employees/${id}`, { active: false });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not deactivate employee");
+    }
   }
 
   function selectEmployeeForPayslip(emp: Employee) {
@@ -234,7 +240,8 @@ export function Payroll() {
       {payslipEmployeeId !== null && (
         <>
           <h2>Generate payslip — {employees.find((e) => e.id === payslipEmployeeId)?.name}</h2>
-          <form className="inline-form" onSubmit={generatePayslip}>
+          <form onSubmit={generatePayslip}>
+          <div className="inline-form">
             <label>
               Period
               <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} required />
@@ -250,7 +257,7 @@ export function Payroll() {
                 required
               />
             </label>
-          </form>
+          </div>
 
           {lines.map((line, i) => (
             <div className="inline-form" key={i}>
@@ -295,10 +302,11 @@ export function Payroll() {
             <button type="button" onClick={() => setPayslipEmployeeId(null)}>
               Cancel
             </button>
-            <button onClick={generatePayslip} disabled={generating}>
+            <button type="submit" disabled={generating}>
               {generating ? "Generating…" : "Generate payslip"}
             </button>
           </div>
+          </form>
         </>
       )}
 

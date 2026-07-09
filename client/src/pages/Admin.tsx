@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 
 interface TenantRow {
   id: number;
@@ -13,6 +13,7 @@ interface TenantRow {
 
 export function Admin() {
   const [tenants, setTenants] = useState<TenantRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     const rows = await api.get<TenantRow[]>("/admin/tenants");
@@ -24,13 +25,19 @@ export function Admin() {
   }, []);
 
   async function setStatus(id: number, subscriptionStatus: TenantRow["subscriptionStatus"]) {
-    await api.patch(`/admin/tenants/${id}/subscription`, { subscriptionStatus });
-    await refresh();
+    setError(null);
+    try {
+      await api.patch(`/admin/tenants/${id}/subscription`, { subscriptionStatus });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update subscription status");
+    }
   }
 
   return (
     <div className="page">
       <h1>Super Admin — all tenants</h1>
+      {error && <p className="error">{error}</p>}
       <div className="table-scroll">
       <table className="data-table">
         <thead>
