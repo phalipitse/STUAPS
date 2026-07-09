@@ -83,7 +83,7 @@ export function Billing() {
   return (
     <div className="page">
       {locked ? (
-        <h1 className="lock-heading">Make a payment to continue with Stuaps.</h1>
+        <h1 className="lock-heading">Make a payment to continue with STUAPS.</h1>
       ) : (
         <h1>Billing</h1>
       )}

@@ -59,6 +59,9 @@ export function Login() {
         <p className="muted small">
           New accommodation provider? <Link to="/register">Register here →</Link>
         </p>
+        <p className="muted small">
+          <Link to="/privacy">Privacy policy</Link>
+        </p>
       </form>
     </div>
   );

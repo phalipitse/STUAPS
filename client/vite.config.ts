@@ -12,9 +12,9 @@ export default defineConfig({
         name: "STUAPS",
         short_name: "STUAPS",
         description:
-          "Multi-tenant invoice reconciliation for student accommodation providers.",
-        theme_color: "#6C5CE7",
-        background_color: "#6C5CE7",
+          "Invoice reconciliation, students, properties, payroll and financial statements for student accommodation providers.",
+        theme_color: "#1D4ED8",
+        background_color: "#1D4ED8",
         display: "standalone",
         start_url: "/",
         scope: "/",

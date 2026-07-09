@@ -6,6 +6,7 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ForgotUsername } from "./pages/ForgotUsername";
+import { Privacy } from "./pages/Privacy";
 import { Dashboard } from "./pages/Dashboard";
 import { Institutions } from "./pages/Institutions";
 import { Properties } from "./pages/Properties";
@@ -35,6 +36,7 @@ export function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/forgot-username" element={<ForgotUsername />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route
         path="/"
         element={

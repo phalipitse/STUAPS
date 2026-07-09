@@ -172,6 +172,9 @@ export function Register() {
         <p className="muted small">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
+        <p className="muted small">
+          By registering you agree to our <Link to="/privacy">privacy policy</Link>.
+        </p>
       </div>
     </div>
   );
