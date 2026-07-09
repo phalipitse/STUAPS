@@ -23,6 +23,14 @@ const PgSession = connectPgSimple(session);
 export function createApp() {
   const app = express();
 
+  // Vercel terminates TLS at the edge and forwards requests to this
+  // serverless function over plain HTTP, so without this Express can't tell
+  // the original connection was HTTPS. express-session's secure-cookie check
+  // relies on that signal — without it, it silently drops the Set-Cookie
+  // header on every response in production, which is why login appeared to
+  // succeed but every following request came back unauthenticated.
+  app.set("trust proxy", 1);
+
   app.use(
     cors({
       // In production the client and API are served from the same Vercel
