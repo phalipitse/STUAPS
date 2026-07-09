@@ -19,6 +19,8 @@
 *.rar
 *.tar
 *.zip
+# ...except the Gradle wrapper jar, required for `./gradlew` to run at all
+!android-twa/gradle/wrapper/gradle-wrapper.jar
 
 # Logs and databases #
 ######################
@@ -45,3 +47,16 @@ dist/
 .env
 *.local
 *.tsbuildinfo
+
+# Android TWA — never commit the signing keystore or local build output.
+# The keystore is the app's identity for its entire lifetime on the Play
+# Store; it must only ever live in GitHub Actions secrets and a private
+# backup, never in this (public) repo.
+android-twa/*.keystore
+android-twa/local.properties
+android-twa/.gradle/
+android-twa/app/build/
+android-twa/build/
+android-twa/captures/
+android-twa/.idea/
+android-twa/*.iml
