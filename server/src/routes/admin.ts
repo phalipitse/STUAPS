@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { tenants, users, invoices, institutions } from "../db/schema.js";
+import { tenants, users, invoices, institutions, waitlistSignups } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireSuperAdmin } from "../middleware/requireRole.js";
 
@@ -59,5 +59,14 @@ adminRouter.get("/tenants/:id/users", async (req, res) => {
     .select({ id: users.id, username: users.username, email: users.email, role: users.role })
     .from(users)
     .where(eq(users.tenantId, Number(req.params.id)));
+  res.json(rows);
+});
+
+/** Marketing landing page waitlist signups, newest first. */
+adminRouter.get("/waitlist", async (_req, res) => {
+  const rows = await db
+    .select()
+    .from(waitlistSignups)
+    .orderBy(sql`${waitlistSignups.createdAt} desc`);
   res.json(rows);
 });

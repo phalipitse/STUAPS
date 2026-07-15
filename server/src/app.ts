@@ -17,6 +17,7 @@ import { billingRouter, paystackWebhookHandler } from "./routes/billing.js";
 import { emailIntegrationsRouter } from "./routes/emailIntegrations.js";
 import { financialStatementsRouter } from "./routes/financialStatements.js";
 import { payrollRouter } from "./routes/payroll.js";
+import { waitlistRouter } from "./routes/waitlist.js";
 
 const PgSession = connectPgSimple(session);
 
@@ -70,6 +71,7 @@ export function createApp() {
 
   app.use("/api/session", authRouter);
   app.use("/api/register", registerRouter);
+  app.use("/api/waitlist", waitlistRouter);
   app.use("/api/institutions", institutionsRouter);
   app.use("/api/properties", propertiesRouter);
   app.use("/api/students", studentsRouter);

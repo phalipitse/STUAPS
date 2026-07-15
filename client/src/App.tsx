@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { InstitutionProvider } from "./institutions/InstitutionContext";
 import { Layout } from "./components/Layout";
@@ -7,6 +7,7 @@ import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ForgotUsername } from "./pages/ForgotUsername";
 import { Privacy } from "./pages/Privacy";
+import { Landing } from "./pages/Landing";
 import { Dashboard } from "./pages/Dashboard";
 import { Institutions } from "./pages/Institutions";
 import { Properties } from "./pages/Properties";
@@ -24,8 +25,15 @@ import { PayslipDetail } from "./pages/PayslipDetail";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="page">Loading…</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    // The bare root path doubles as the public marketing landing page for
+    // signed-out visitors — every other in-app path still redirects to
+    // login, same as before.
+    if (location.pathname === "/") return <Landing />;
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 }
 

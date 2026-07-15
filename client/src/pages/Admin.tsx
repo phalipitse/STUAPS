@@ -11,13 +11,28 @@ interface TenantRow {
   invoiceCount: number;
 }
 
+interface WaitlistRow {
+  id: number;
+  fullName: string;
+  email: string;
+  companyName: string | null;
+  country: string | null;
+  propertyCount: string | null;
+  createdAt: string;
+}
+
 export function Admin() {
   const [tenants, setTenants] = useState<TenantRow[]>([]);
+  const [waitlist, setWaitlist] = useState<WaitlistRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    const rows = await api.get<TenantRow[]>("/admin/tenants");
-    setTenants(rows);
+    const [tenantRows, waitlistRows] = await Promise.all([
+      api.get<TenantRow[]>("/admin/tenants"),
+      api.get<WaitlistRow[]>("/admin/waitlist"),
+    ]);
+    setTenants(tenantRows);
+    setWaitlist(waitlistRows);
   }
 
   useEffect(() => {
@@ -81,6 +96,41 @@ export function Admin() {
             <tr>
               <td colSpan={7} className="muted">
                 No provider tenants yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      </div>
+
+      <h2>Waitlist signups</h2>
+      <div className="table-scroll">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Company</th>
+            <th>Country</th>
+            <th>Properties</th>
+            <th>Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          {waitlist.map((w) => (
+            <tr key={w.id}>
+              <td>{w.fullName}</td>
+              <td>{w.email}</td>
+              <td>{w.companyName ?? "—"}</td>
+              <td>{w.country ?? "—"}</td>
+              <td>{w.propertyCount ?? "—"}</td>
+              <td>{new Date(w.createdAt).toLocaleDateString()}</td>
+            </tr>
+          ))}
+          {waitlist.length === 0 && (
+            <tr>
+              <td colSpan={6} className="muted">
+                No waitlist signups yet.
               </td>
             </tr>
           )}

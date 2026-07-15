@@ -486,3 +486,26 @@ export const detectedStatementsRelations = relations(detectedStatements, ({ one 
     references: [emailConnections.id],
   }),
 }));
+
+// ---------------------------------------------------------------------------
+// Marketing site waitlist — separate from the real self-serve registration
+// flow (which already gives a working 14-day trial with no waitlist). This
+// is a lightweight, lower-friction "notify me" capture for the public
+// landing page, mainly for prospects outside the current market.
+// ---------------------------------------------------------------------------
+
+export const waitlistSignups = pgTable(
+  "waitlist_signups",
+  {
+    id: serial("id").primaryKey(),
+    fullName: varchar("full_name", { length: 255 }).notNull(),
+    email: varchar("email", { length: 255 }).notNull(),
+    companyName: varchar("company_name", { length: 255 }),
+    country: varchar("country", { length: 64 }),
+    propertyCount: varchar("property_count", { length: 32 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    emailIdx: uniqueIndex("waitlist_signups_email_idx").on(table.email),
+  })
+);
