@@ -31,7 +31,7 @@ export function Privacy() {
           the app's core features. This data belongs to the provider's business, not to us.
         </li>
         <li>
-          <strong>Payroll data</strong> (Premium add-on only, if enabled) — employee names, ID
+          <strong>Payroll data</strong> (Elite add-on only, if enabled) — employee names, ID
           numbers, job titles, salaries, and payslip line items entered by the provider.
         </li>
         <li>
