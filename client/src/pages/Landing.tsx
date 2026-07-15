@@ -120,18 +120,23 @@ export function Landing() {
         <h2>Simple, self-serve pricing</h2>
         <div className="landing-pricing-grid">
           <div className="landing-price-card">
-            <span className="landing-price-label">Monthly</span>
+            <span className="landing-price-label">Free</span>
+            <span className="landing-price-value">R0</span>
+            <span className="landing-price-period">14-day trial, no card required</span>
+          </div>
+          <div className="landing-price-card">
+            <span className="landing-price-label">Essential</span>
             <span className="landing-price-value">R750</span>
             <span className="landing-price-period">per month</span>
           </div>
           <div className="landing-price-card landing-price-featured">
             <span className="landing-price-badge">Save 10%</span>
-            <span className="landing-price-label">Annual</span>
+            <span className="landing-price-label">Standard</span>
             <span className="landing-price-value">R8,100</span>
             <span className="landing-price-period">per year</span>
           </div>
           <div className="landing-price-card">
-            <span className="landing-price-label">Premium add-on</span>
+            <span className="landing-price-label">Elite add-on</span>
             <span className="landing-price-value">R150–R200</span>
             <span className="landing-price-period">per month — payroll + financial statements</span>
           </div>

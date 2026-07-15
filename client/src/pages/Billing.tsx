@@ -9,6 +9,16 @@ type Plan = "monthly" | "annual";
 const MONTHLY_PRICE = 750;
 const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * 12 * 0.9); // 12 x R750, less 10% = R8,100
 
+// Customer-facing plan names. Internally these still map 1:1 onto the
+// existing "monthly"/"annual" billing plan and addon status — only the
+// display names changed, not the pricing or feature gating.
+const PLAN_DISPLAY_NAME: Record<"monthly" | "annual", string> = {
+  monthly: "Essential",
+  annual: "Standard",
+};
+const ELITE_NAME = "Elite";
+const FREE_NAME = "Free";
+
 function formatRand(amount: number) {
   return `R${amount.toLocaleString("en-ZA")}`;
 }
@@ -92,7 +102,7 @@ export function Billing() {
         <p className={paymentNotice.status === "success" ? "muted" : "error"}>
           {paymentNotice.status === "success"
             ? paymentNotice.kind === "addon"
-              ? "Premium add-on activated — it may take a few seconds for your account to update."
+              ? `${ELITE_NAME} add-on activated — it may take a few seconds for your account to update.`
               : "Payment received — it may take a few seconds for your account to update."
             : `Payment ${paymentNotice.status}. If you were charged, contact support — otherwise you can try again below.`}
         </p>
@@ -101,10 +111,14 @@ export function Billing() {
       {!locked && (
         <div className="kpi-row">
           <div className="kpi-tile">
-            <span className="kpi-label">Status</span>
+            <span className="kpi-label">Plan</span>
             <span className="kpi-value">
               <span className={`status-pill status-${tenant?.subscriptionStatus}`}>
-                {tenant?.subscriptionStatus}
+                {tenant?.subscriptionStatus === "trial"
+                  ? FREE_NAME
+                  : tenant?.billingPlan
+                    ? PLAN_DISPLAY_NAME[tenant.billingPlan as "monthly" | "annual"]
+                    : tenant?.subscriptionStatus}
               </span>
             </span>
           </div>
@@ -139,7 +153,7 @@ export function Billing() {
             className={`plan-card${plan === "monthly" ? " plan-card-selected" : ""}`}
             onClick={() => setPlan("monthly")}
           >
-            <span className="plan-name">Monthly</span>
+            <span className="plan-name">{PLAN_DISPLAY_NAME.monthly}</span>
             <span className="plan-price">{formatRand(MONTHLY_PRICE)}</span>
             <span className="plan-period">per month</span>
           </button>
@@ -149,7 +163,7 @@ export function Billing() {
             onClick={() => setPlan("annual")}
           >
             <span className="plan-badge">Save 10%</span>
-            <span className="plan-name">Annual</span>
+            <span className="plan-name">{PLAN_DISPLAY_NAME.annual}</span>
             <span className="plan-price">{formatRand(ANNUAL_PRICE)}</span>
             <span className="plan-period">
               per year — {formatRand(Math.round(ANNUAL_PRICE / 12))}/mo equivalent
@@ -165,7 +179,7 @@ export function Billing() {
           <button onClick={startCheckout} disabled={loading !== null}>
             {loading === "checkout"
               ? "Redirecting…"
-              : `Upgrade now — ${plan === "monthly" ? formatRand(MONTHLY_PRICE) + "/month" : formatRand(ANNUAL_PRICE) + "/year"}`}
+              : `Upgrade to ${PLAN_DISPLAY_NAME[plan]} — ${plan === "monthly" ? formatRand(MONTHLY_PRICE) + "/month" : formatRand(ANNUAL_PRICE) + "/year"}`}
           </button>
         )}
         {(!locked || tenant?.subscriptionStatus === "past_due") && (
@@ -177,20 +191,22 @@ export function Billing() {
 
       {!locked && (
         <>
-          <h2>Premium: financial statements &amp; payroll</h2>
+          <h2>{ELITE_NAME}: financial statements &amp; payroll</h2>
           <p className="muted">
             Unlock income statements, balance sheets, cash flow, and payroll/tax tools for an extra{" "}
-            {formatRand(addonMonthlyPrice)}/month on top of your {tenant?.billingPlan ?? "monthly"} plan.
+            {formatRand(addonMonthlyPrice)}/month on top of your{" "}
+            {tenant?.billingPlan ? PLAN_DISPLAY_NAME[tenant.billingPlan as "monthly" | "annual"] : PLAN_DISPLAY_NAME.monthly}{" "}
+            plan.
           </p>
           {tenant?.addonStatus === "active" ? (
             <p>
-              <span className="status-pill status-approved">Premium active</span> — manage or cancel it
+              <span className="status-pill status-approved">{ELITE_NAME} active</span> — manage or cancel it
               from "Manage billing" above.
             </p>
           ) : (
             <div className="inline-form">
               <button onClick={startAddonCheckout} disabled={loading !== null}>
-                {loading === "addon" ? "Redirecting…" : `Add Premium — ${formatRand(addonMonthlyPrice)}/month`}
+                {loading === "addon" ? "Redirecting…" : `Add ${ELITE_NAME} — ${formatRand(addonMonthlyPrice)}/month`}
               </button>
             </div>
           )}
