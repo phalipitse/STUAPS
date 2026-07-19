@@ -9,6 +9,29 @@ type Plan = "monthly" | "annual";
 const MONTHLY_PRICE = 750;
 const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * 12 * 0.9); // 12 x R750, less 10% = R8,100
 
+const FREE_NAME = "Free";
+
+const CORE_FEATURES = [
+  "Invoice reconciliation (outstanding / partial / paid)",
+  "Student roster & \"who owes what\" reporting",
+  "Properties & institutions management",
+  "Staff accounts with per-institution access",
+  "Gmail inbox scanning for funder statements",
+];
+
+const PLAN_BENEFITS: Record<"free" | "monthly" | "annual", string[]> = {
+  free: ["Everything in the core package, free for 14 days", ...CORE_FEATURES],
+  monthly: CORE_FEATURES,
+  annual: [...CORE_FEATURES, "10% cheaper than paying monthly"],
+};
+
+const ELITE_BENEFITS = [
+  "Income statement, balance sheet & cash flow",
+  "Payroll: employees & gross-to-net payslips",
+  "AI-assisted expense entry (photo/voice)",
+  "Bank statement import (CSV/PDF/photo)",
+];
+
 function formatRand(amount: number) {
   return `R${amount.toLocaleString("en-ZA")}`;
 }
@@ -132,6 +155,17 @@ export function Billing() {
         </p>
       )}
 
+      {needsToSubscribe && tenant?.subscriptionStatus === "trial" && (
+        <div className="plan-benefits-box">
+          <span className="plan-name">{FREE_NAME} — your current plan</span>
+          <ul>
+            {PLAN_BENEFITS.free.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {needsToSubscribe && (
         <div className="plan-row">
           <button
@@ -142,6 +176,11 @@ export function Billing() {
             <span className="plan-name">Monthly</span>
             <span className="plan-price">{formatRand(MONTHLY_PRICE)}</span>
             <span className="plan-period">per month</span>
+            <ul className="plan-benefits">
+              {PLAN_BENEFITS.monthly.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
           </button>
           <button
             type="button"
@@ -154,6 +193,11 @@ export function Billing() {
             <span className="plan-period">
               per year — {formatRand(Math.round(ANNUAL_PRICE / 12))}/mo equivalent
             </span>
+            <ul className="plan-benefits">
+              {PLAN_BENEFITS.annual.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
           </button>
         </div>
       )}
@@ -182,6 +226,11 @@ export function Billing() {
             Unlock income statements, balance sheets, cash flow, and payroll/tax tools for an extra{" "}
             {formatRand(addonMonthlyPrice)}/month on top of your {tenant?.billingPlan ?? "monthly"} plan.
           </p>
+          <ul className="plan-benefits plan-benefits-inline">
+            {ELITE_BENEFITS.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
           {tenant?.addonStatus === "active" ? (
             <p>
               <span className="status-pill status-approved">Premium active</span> — manage or cancel it

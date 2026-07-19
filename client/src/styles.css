@@ -699,7 +699,8 @@ button {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.2rem;
-  min-width: 200px;
+  min-width: 220px;
+  max-width: 280px;
   padding: 1.25rem 1.5rem;
   background: var(--color-surface);
   border: 2px solid var(--color-border);
@@ -708,6 +709,55 @@ button {
   text-align: left;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   color: var(--color-text);
+}
+
+.plan-benefits {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--color-border);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.plan-benefits li {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  padding-left: 1.1rem;
+  position: relative;
+  line-height: 1.4;
+}
+
+.plan-benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.plan-benefits-inline {
+  max-width: 480px;
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0.5rem;
+}
+
+.plan-benefits-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  max-width: 420px;
+}
+
+.plan-benefits-box .plan-benefits {
+  border-top: none;
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
 }
 
 .plan-card:hover {
