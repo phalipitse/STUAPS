@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
@@ -8,9 +9,22 @@ import { requireRole } from "../middleware/requireRole.js";
 import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
 import { requirePremiumAddon } from "../middleware/requirePremiumAddon.js";
 import { summarizePayslip } from "../lib/payroll.js";
+import {
+  classifyRosterFile,
+  parseEmployeeSpreadsheet,
+  extractDocxText,
+  UnsupportedRosterFileError,
+  type EmployeeRow,
+} from "../lib/rosterUpload.js";
+import { isClaudeConfigured, extractEmployeesFromDocument, extractEmployeesFromText } from "../lib/claudeExtraction.js";
 
 export const payrollRouter = Router();
 payrollRouter.use(requireAuth, requireActiveSubscription, requirePremiumAddon);
+
+const rosterUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -77,6 +91,114 @@ payrollRouter.patch("/employees/:id", requireRole("admin"), async (req, res, nex
       .where(eq(employees.id, existing.id))
       .returning();
     res.json(row);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Parses an uploaded employee-list file (CSV/Excel deterministically,
+ * Word/PDF/image via Claude) and returns a preview — nothing is written to
+ * the database until the admin reviews and confirms via POST /import.
+ */
+payrollRouter.post(
+  "/employees/upload-preview",
+  requireRole("admin"),
+  rosterUpload.single("file"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "A file is required" });
+      }
+
+      let kind;
+      try {
+        kind = classifyRosterFile(req.file.originalname, req.file.mimetype);
+      } catch (err) {
+        if (err instanceof UnsupportedRosterFileError) {
+          return res.status(400).json({ error: err.message });
+        }
+        throw err;
+      }
+
+      let rows: EmployeeRow[];
+      if (kind === "spreadsheet-csv" || kind === "spreadsheet-xlsx") {
+        rows = await parseEmployeeSpreadsheet(req.file.buffer, kind === "spreadsheet-csv");
+      } else {
+        if (!isClaudeConfigured()) {
+          return res
+            .status(400)
+            .json({ error: "Scanning Word/PDF/image employee lists is not configured on this server yet — use a CSV or Excel file instead" });
+        }
+        if (kind === "docx") {
+          const text = await extractDocxText(req.file.buffer);
+          rows = await extractEmployeesFromText(text);
+        } else {
+          rows = await extractEmployeesFromDocument(req.file.buffer, req.file.mimetype);
+        }
+      }
+
+      res.json({ rows });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+const employeeImportSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        idNumber: z.string().min(1),
+        jobTitle: z.string().optional(),
+        monthlySalary: z.number().positive().optional(),
+      })
+    )
+    .min(1)
+    .max(2000),
+});
+
+/** Bulk-creates (or updates, if the ID number already exists) employees from a reviewed upload. */
+payrollRouter.post("/employees/import", requireRole("admin"), async (req, res, next) => {
+  try {
+    const parsed = employeeImportSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+
+    let created = 0;
+    let updated = 0;
+    for (const row of parsed.data.rows) {
+      const [existing] = await db
+        .select({ id: employees.id })
+        .from(employees)
+        .where(and(eq(employees.tenantId, req.session.tenantId!), eq(employees.idNumber, row.idNumber)));
+
+      if (existing) {
+        await db
+          .update(employees)
+          .set({
+            name: row.name,
+            jobTitle: row.jobTitle ?? null,
+            ...(row.monthlySalary !== undefined ? { monthlySalary: row.monthlySalary.toString() } : {}),
+          })
+          .where(eq(employees.id, existing.id));
+        updated++;
+      } else {
+        if (row.monthlySalary === undefined) continue; // required for a new employee
+        await db.insert(employees).values({
+          tenantId: req.session.tenantId!,
+          name: row.name,
+          idNumber: row.idNumber,
+          jobTitle: row.jobTitle ?? null,
+          monthlySalary: row.monthlySalary.toString(),
+        });
+        created++;
+      }
+    }
+
+    res.status(201).json({ created, updated });
   } catch (err) {
     next(err);
   }

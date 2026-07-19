@@ -192,3 +192,132 @@ export async function extractExpenseFromText(text: string): Promise<ExtractedExp
     RECORD_EXPENSE_TOOL
   );
 }
+
+export interface ExtractedStudent {
+  studentNumber: string;
+  name: string;
+  surname: string;
+  residence?: string;
+  campus?: string;
+}
+
+const RECORD_STUDENTS_TOOL: Tool = {
+  name: "record_students",
+  description: "A list of students extracted from a roster document (PDF, scanned page, or free-text list).",
+  input_schema: {
+    type: "object",
+    properties: {
+      students: {
+        type: "array",
+        description: "Every student row found, in the order they appear. Skip rows that are clearly not students (headers, totals, blank rows).",
+        items: {
+          type: "object",
+          properties: {
+            studentNumber: { type: "string", description: "The student's student/ID number, as printed." },
+            name: { type: "string", description: "First name(s)." },
+            surname: { type: "string", description: "Surname/last name." },
+            residence: { type: "string", description: "Residence or building name, if shown." },
+            campus: { type: "string", description: "Campus name, if shown." },
+          },
+          required: ["studentNumber", "name", "surname"],
+        },
+      },
+    },
+    required: ["students"],
+  },
+};
+
+/** Extracts a student roster from a photographed/scanned document (PDF page or image). */
+export async function extractStudentsFromDocument(buffer: Buffer, mimeType: string): Promise<ExtractedStudent[]> {
+  const documentBlock = buildDocumentBlock(buffer, mimeType);
+  const result = await runExtraction<{ students: ExtractedStudent[] }>(
+    [
+      documentBlock,
+      {
+        type: "text",
+        text: "This is a page from a student roster/list. Extract every student row using the record_students tool — do not summarize or skip rows.",
+      },
+    ],
+    RECORD_STUDENTS_TOOL
+  );
+  return result.students;
+}
+
+/** Extracts a student roster from free-form text (e.g. text extracted from a Word document). */
+export async function extractStudentsFromText(text: string): Promise<ExtractedStudent[]> {
+  const result = await runExtraction<{ students: ExtractedStudent[] }>(
+    [
+      {
+        type: "text",
+        text: `The following text was extracted from a student roster document. Extract every student row using the record_students tool — do not summarize or skip rows.\n\n---\n${text}`,
+      },
+    ],
+    RECORD_STUDENTS_TOOL
+  );
+  return result.students;
+}
+
+export interface ExtractedEmployee {
+  name: string;
+  idNumber: string;
+  jobTitle?: string;
+  monthlySalary?: number;
+}
+
+const RECORD_EMPLOYEES_TOOL: Tool = {
+  name: "record_employees",
+  description: "A list of employees extracted from a staff/payroll document.",
+  input_schema: {
+    type: "object",
+    properties: {
+      employees: {
+        type: "array",
+        description: "Every employee row found, in the order they appear. Skip rows that are clearly not employees (headers, totals, blank rows).",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Full name." },
+            idNumber: { type: "string", description: "The employee's ID number, as printed." },
+            jobTitle: { type: "string", description: "Job title, if shown." },
+            monthlySalary: {
+              type: "number",
+              description: "Monthly salary in Rand, numeric only, if shown.",
+            },
+          },
+          required: ["name", "idNumber"],
+        },
+      },
+    },
+    required: ["employees"],
+  },
+};
+
+/** Extracts an employee list from a photographed/scanned document (PDF page or image). */
+export async function extractEmployeesFromDocument(buffer: Buffer, mimeType: string): Promise<ExtractedEmployee[]> {
+  const documentBlock = buildDocumentBlock(buffer, mimeType);
+  const result = await runExtraction<{ employees: ExtractedEmployee[] }>(
+    [
+      documentBlock,
+      {
+        type: "text",
+        text: "This is a page from a staff/employee list. Extract every employee row using the record_employees tool — do not summarize or skip rows.",
+      },
+    ],
+    RECORD_EMPLOYEES_TOOL
+  );
+  return result.employees;
+}
+
+/** Extracts an employee list from free-form text (e.g. text extracted from a Word document). */
+export async function extractEmployeesFromText(text: string): Promise<ExtractedEmployee[]> {
+  const result = await runExtraction<{ employees: ExtractedEmployee[] }>(
+    [
+      {
+        type: "text",
+        text: `The following text was extracted from a staff/employee list document. Extract every employee row using the record_employees tool — do not summarize or skip rows.\n\n---\n${text}`,
+      },
+    ],
+    RECORD_EMPLOYEES_TOOL
+  );
+  return result.employees;
+}
