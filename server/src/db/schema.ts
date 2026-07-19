@@ -38,6 +38,13 @@ export const addonStatusEnum = pgEnum("addon_status", [
 
 export const emailProviderEnum = pgEnum("email_provider", ["gmail"]);
 
+export const detectedDocumentKindEnum = pgEnum("detected_document_kind", [
+  "statement",
+  "student_roster",
+  "employee_roster",
+  "unknown",
+]);
+
 export const detectedStatementStatusEnum = pgEnum("detected_statement_status", [
   "pending",
   "approved",
@@ -376,6 +383,10 @@ export const detectedStatements = pgTable(
     subject: text("subject"),
     receivedAt: timestamp("received_at", { withTimezone: true }),
     attachmentFilename: varchar("attachment_filename", { length: 255 }),
+    attachmentMimeType: varchar("attachment_mime_type", { length: 255 }),
+    // Best-effort guess from the filename/subject — "statement" is the default
+    // for backward compatibility with rows detected before this column existed.
+    documentKind: detectedDocumentKindEnum("document_kind").notNull().default("statement"),
     status: detectedStatementStatusEnum("status").notNull().default("pending"),
     // Best-effort PDF parse preview, filled in once an admin approves — never
     // relied on blindly; see lib/pdfStatementParser.ts for the extraction heuristic.
@@ -396,6 +407,25 @@ export const detectedStatements = pgTable(
     ),
   })
 );
+
+// Audit trail of documents sent out through a tenant's connected Gmail —
+// e.g. an outstanding-balance report or a payslip emailed to a recipient
+// from inside Stuaps. We record metadata only, never the attachment bytes.
+export const sentEmails = pgTable("sent_emails", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  emailConnectionId: integer("email_connection_id")
+    .notNull()
+    .references(() => emailConnections.id, { onDelete: "cascade" }),
+  sentByUserId: integer("sent_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  toAddress: varchar("to_address", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 998 }).notNull(),
+  attachmentFilename: varchar("attachment_filename", { length: 255 }),
+  providerMessageId: varchar("provider_message_id", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // ---------------------------------------------------------------------------
 // Relations
@@ -477,12 +507,21 @@ export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ one }) =
 export const emailConnectionsRelations = relations(emailConnections, ({ one, many }) => ({
   tenant: one(tenants, { fields: [emailConnections.tenantId], references: [tenants.id] }),
   detectedStatements: many(detectedStatements),
+  sentEmails: many(sentEmails),
 }));
 
 export const detectedStatementsRelations = relations(detectedStatements, ({ one }) => ({
   tenant: one(tenants, { fields: [detectedStatements.tenantId], references: [tenants.id] }),
   emailConnection: one(emailConnections, {
     fields: [detectedStatements.emailConnectionId],
+    references: [emailConnections.id],
+  }),
+}));
+
+export const sentEmailsRelations = relations(sentEmails, ({ one }) => ({
+  tenant: one(tenants, { fields: [sentEmails.tenantId], references: [tenants.id] }),
+  emailConnection: one(emailConnections, {
+    fields: [sentEmails.emailConnectionId],
     references: [emailConnections.id],
   }),
 }));

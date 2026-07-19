@@ -57,6 +57,13 @@
       "when": 1784110018918,
       "tag": "0007_kind_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784464659118,
+      "tag": "0008_dapper_micromax",
+      "breakpoints": true
     }
   ]
 }
