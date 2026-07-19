@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../lib/api";
@@ -12,6 +12,17 @@ interface Employee {
   startDate: string | null;
   monthlySalary: string;
   active: boolean;
+}
+
+interface EmployeeRosterRow {
+  name: string;
+  idNumber: string;
+  jobTitle?: string;
+  monthlySalary?: number;
+}
+
+interface EmployeePreviewRow extends EmployeeRosterRow {
+  selected: boolean;
 }
 
 interface Payslip {
@@ -45,6 +56,13 @@ export function Payroll() {
   const [startDate, setStartDate] = useState("");
   const [monthlySalary, setMonthlySalary] = useState("");
   const [addingEmployee, setAddingEmployee] = useState(false);
+
+  const [empPreviewRows, setEmpPreviewRows] = useState<EmployeePreviewRow[]>([]);
+  const [empParsing, setEmpParsing] = useState(false);
+  const [empImporting, setEmpImporting] = useState(false);
+  const [empUploadError, setEmpUploadError] = useState<string | null>(null);
+  const [empImportNotice, setEmpImportNotice] = useState<string | null>(null);
+  const empFileInputRef = useRef<HTMLInputElement>(null);
 
   const [payslipEmployeeId, setPayslipEmployeeId] = useState<number | null>(null);
   const [period, setPeriod] = useState(todayMonth());
@@ -88,6 +106,52 @@ export function Payroll() {
       setError(err instanceof ApiError ? err.message : "Could not add employee");
     } finally {
       setAddingEmployee(false);
+    }
+  }
+
+  async function handleEmployeeFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEmpUploadError(null);
+    setEmpImportNotice(null);
+    setEmpPreviewRows([]);
+    setEmpParsing(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const { rows } = await api.upload<{ rows: EmployeeRosterRow[] }>("/payroll/employees/upload-preview", form);
+      setEmpPreviewRows(rows.map((r) => ({ ...r, selected: true })));
+      if (rows.length === 0) {
+        setEmpUploadError("No employees found in that file — check the format and try again.");
+      }
+    } catch (err) {
+      setEmpUploadError(err instanceof ApiError ? err.message : "Could not read that file");
+    } finally {
+      setEmpParsing(false);
+      if (empFileInputRef.current) empFileInputRef.current.value = "";
+    }
+  }
+
+  function toggleEmpRow(index: number) {
+    setEmpPreviewRows((cur) => cur.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r)));
+  }
+
+  async function handleEmployeeImport() {
+    const toImport = empPreviewRows.filter((r) => r.selected);
+    if (toImport.length === 0) return;
+    setEmpImporting(true);
+    setEmpUploadError(null);
+    try {
+      const res = await api.post<{ created: number; updated: number }>("/payroll/employees/import", {
+        rows: toImport.map(({ selected: _selected, ...r }) => r),
+      });
+      setEmpImportNotice(`Imported ${res.created} new employee(s), updated ${res.updated} existing.`);
+      setEmpPreviewRows([]);
+      await refresh();
+    } catch (err) {
+      setEmpUploadError(err instanceof ApiError ? err.message : "Could not import employees");
+    } finally {
+      setEmpImporting(false);
     }
   }
 
@@ -202,6 +266,71 @@ export function Payroll() {
           </tbody>
         </table>
       </div>
+
+      <h3>Bulk-upload employees</h3>
+      <p className="muted">
+        Upload a staff list as a CSV, Excel (.xlsx), Word (.docx), PDF, or photo — employees already
+        on file (matched by ID number) are updated, new ones are added (new employees need a monthly
+        salary in the file).
+      </p>
+      <div className="inline-form">
+        <label>
+          Choose file
+          <input
+            ref={empFileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls,.docx,.pdf,image/*"
+            disabled={empParsing}
+            onChange={handleEmployeeFileSelected}
+          />
+        </label>
+        {empParsing && <span className="muted">Reading file…</span>}
+      </div>
+      {empUploadError && <p className="error">{empUploadError}</p>}
+      {empImportNotice && <p className="success">{empImportNotice}</p>}
+
+      {empPreviewRows.length > 0 && (
+        <>
+          <h4>Review before importing ({empPreviewRows.filter((r) => r.selected).length} selected)</h4>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Name</th>
+                  <th>ID number</th>
+                  <th>Job title</th>
+                  <th>Monthly salary</th>
+                </tr>
+              </thead>
+              <tbody>
+                {empPreviewRows.map((r, i) => (
+                  <tr key={i}>
+                    <td>
+                      <input type="checkbox" checked={r.selected} onChange={() => toggleEmpRow(i)} />
+                    </td>
+                    <td>{r.name}</td>
+                    <td>{r.idNumber}</td>
+                    <td>{r.jobTitle ?? "—"}</td>
+                    <td>{r.monthlySalary !== undefined ? formatRand(r.monthlySalary) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="inline-form">
+            <button
+              onClick={handleEmployeeImport}
+              disabled={empImporting || empPreviewRows.every((r) => !r.selected)}
+            >
+              {empImporting ? "Importing…" : "Import selected"}
+            </button>
+            <button type="button" className="link-button" onClick={() => setEmpPreviewRows([])}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
 
       <h3>Add employee</h3>
       <form className="inline-form" onSubmit={addEmployee}>

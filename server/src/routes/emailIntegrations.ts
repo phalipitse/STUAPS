@@ -1,9 +1,10 @@
 import { Router } from "express";
+import multer from "multer";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { emailConnections, detectedStatements, invoices } from "../db/schema.js";
+import { emailConnections, detectedStatements, invoices, students, employees, sentEmails } from "../db/schema.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { requireActiveSubscription } from "../middleware/requireActiveSubscription.js";
@@ -18,13 +19,34 @@ import {
   searchGmailMessages,
   getGmailMessage,
   getGmailAttachment,
+  sendGmailMessage,
 } from "../lib/googleOAuth.js";
 import { parseInvoiceCsv, CsvParseError } from "../lib/csvParser.js";
 import { extractPdfText, parseStatementText, summarizeForPreview } from "../lib/pdfStatementParser.js";
 import { importParsedCsvInvoice, importParsedPdfStatement } from "../lib/invoiceImport.js";
+import {
+  classifyRosterFile,
+  parseStudentSpreadsheet,
+  parseEmployeeSpreadsheet,
+  extractDocxText,
+  UnsupportedRosterFileError,
+} from "../lib/rosterUpload.js";
+import {
+  isClaudeConfigured,
+  extractStudentsFromDocument,
+  extractStudentsFromText,
+  extractEmployeesFromDocument,
+  extractEmployeesFromText,
+} from "../lib/claudeExtraction.js";
+import { classifyDocumentKind } from "../lib/emailDocumentClassifier.js";
 
 export const emailIntegrationsRouter = Router();
 emailIntegrationsRouter.use(requireAuth, requireRole("admin"), requireActiveSubscription);
+
+const outboundUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
 
 function originOf(req: { protocol: string; get: (h: string) => string | undefined }) {
   return `${req.protocol}://${req.get("host")}`;
@@ -220,6 +242,8 @@ emailIntegrationsRouter.post("/scan", async (req, res, next) => {
         subject: message.subject,
         receivedAt: message.receivedAt,
         attachmentFilename: message.attachment.filename,
+        attachmentMimeType: message.attachment.mimeType,
+        documentKind: classifyDocumentKind(message.attachment.filename, message.subject),
         status: "pending",
       });
       newCount++;
@@ -282,12 +306,7 @@ emailIntegrationsRouter.get("/detected/:id/download", async (req, res, next) => 
       statement.providerAttachmentId
     );
 
-    res.setHeader(
-      "Content-Type",
-      statement.attachmentFilename?.toLowerCase().endsWith(".pdf")
-        ? "application/pdf"
-        : "text/csv"
-    );
+    res.setHeader("Content-Type", statement.attachmentMimeType || "application/octet-stream");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${statement.attachmentFilename ?? "statement"}"`
@@ -298,15 +317,120 @@ emailIntegrationsRouter.get("/detected/:id/download", async (req, res, next) => 
   }
 });
 
+/** Parses a roster attachment (student or employee list) the same way the bulk-upload preview does. */
+async function parseRosterAttachment(
+  kind: "student_roster" | "employee_roster",
+  buffer: Buffer,
+  filename: string,
+  mimeType: string
+): Promise<{ students: Awaited<ReturnType<typeof parseStudentSpreadsheet>> } | { employees: Awaited<ReturnType<typeof parseEmployeeSpreadsheet>> }> {
+  const fileKind = classifyRosterFile(filename, mimeType);
+  const isSpreadsheet = fileKind === "spreadsheet-csv" || fileKind === "spreadsheet-xlsx";
+
+  if (kind === "student_roster") {
+    if (isSpreadsheet) {
+      return { students: await parseStudentSpreadsheet(buffer, fileKind === "spreadsheet-csv") };
+    }
+    if (!isClaudeConfigured()) throw new UnsupportedRosterFileError("AI document scanning is not configured on this server");
+    if (fileKind === "docx") return { students: await extractStudentsFromText(await extractDocxText(buffer)) };
+    return { students: await extractStudentsFromDocument(buffer, mimeType) };
+  }
+
+  if (isSpreadsheet) {
+    return { employees: await parseEmployeeSpreadsheet(buffer, fileKind === "spreadsheet-csv") };
+  }
+  if (!isClaudeConfigured()) throw new UnsupportedRosterFileError("AI document scanning is not configured on this server");
+  if (fileKind === "docx") return { employees: await extractEmployeesFromText(await extractDocxText(buffer)) };
+  return { employees: await extractEmployeesFromDocument(buffer, mimeType) };
+}
+
+/** Imports a parsed roster attachment directly (the admin's "Approve" click is the confirmation), returning a summary string. */
+async function importRosterAttachment(
+  statement: typeof detectedStatements.$inferSelect,
+  buffer: Buffer,
+  tenantId: number,
+  institutionId: number | undefined
+): Promise<string> {
+  const kind = statement.documentKind as "student_roster" | "employee_roster";
+  if (kind === "student_roster" && !institutionId) {
+    throw new Error("institutionId is required to import a student roster");
+  }
+
+  const parsed = await parseRosterAttachment(
+    kind,
+    buffer,
+    statement.attachmentFilename ?? "attachment",
+    statement.attachmentMimeType ?? "application/octet-stream"
+  );
+
+  let created = 0;
+  let updated = 0;
+
+  if ("students" in parsed) {
+    for (const row of parsed.students) {
+      const [existing] = await db
+        .select({ id: students.id })
+        .from(students)
+        .where(and(eq(students.institutionId, institutionId!), eq(students.studentNumber, row.studentNumber)));
+      if (existing) {
+        await db
+          .update(students)
+          .set({ name: row.name, surname: row.surname, residence: row.residence, campus: row.campus })
+          .where(eq(students.id, existing.id));
+        updated++;
+      } else {
+        await db.insert(students).values({ institutionId: institutionId!, ...row });
+        created++;
+      }
+    }
+    return `Imported ${created} new student(s), updated ${updated} existing (from email attachment).`;
+  }
+
+  for (const row of parsed.employees) {
+    const [existing] = await db
+      .select({ id: employees.id })
+      .from(employees)
+      .where(and(eq(employees.tenantId, tenantId), eq(employees.idNumber, row.idNumber)));
+    if (existing) {
+      await db
+        .update(employees)
+        .set({
+          name: row.name,
+          jobTitle: row.jobTitle ?? null,
+          ...(row.monthlySalary !== undefined ? { monthlySalary: row.monthlySalary.toString() } : {}),
+        })
+        .where(eq(employees.id, existing.id));
+      updated++;
+    } else {
+      if (row.monthlySalary === undefined) continue; // required for a new employee
+      await db.insert(employees).values({
+        tenantId,
+        name: row.name,
+        idNumber: row.idNumber,
+        jobTitle: row.jobTitle ?? null,
+        monthlySalary: row.monthlySalary.toString(),
+      });
+      created++;
+    }
+  }
+  return `Imported ${created} new employee(s), updated ${updated} existing (from email attachment).`;
+}
+
 const approveSchema = z.object({
-  institutionId: z.number().int().positive(),
+  institutionId: z.number().int().positive().optional(),
 });
 
 emailIntegrationsRouter.post("/detected/:id/approve", async (req, res, next) => {
   try {
-    const parsed = approveSchema.safeParse({ institutionId: Number(req.body.institutionId) });
+    const rawInstitutionId = req.body.institutionId;
+    const parsed = approveSchema.safeParse({
+      institutionId:
+        rawInstitutionId === undefined || rawInstitutionId === null || rawInstitutionId === ""
+          ? undefined
+          : Number(rawInstitutionId),
+    });
     if (!parsed.success) {
-      return res.status(400).json({ error: "institutionId is required" });
+      return res.status(400).json({ error: "institutionId is invalid" });
     }
     const statement = await loadTenantDetectedStatement(Number(req.params.id), req.session.tenantId!);
     if (!statement) return res.status(404).json({ error: "Not found" });
@@ -314,62 +438,93 @@ emailIntegrationsRouter.post("/detected/:id/approve", async (req, res, next) => 
       return res.status(409).json({ error: `Already ${statement.status}` });
     }
 
-    await assertInstitutionAccessible(parsed.data.institutionId, {
-      tenantId: req.session.tenantId!,
-      userId: req.session.userId!,
-      role: req.session.role!,
-    });
+    const needsInstitution = statement.documentKind === "statement" || statement.documentKind === "student_roster";
+    if (needsInstitution && !parsed.data.institutionId) {
+      return res.status(400).json({ error: "institutionId is required for this document type" });
+    }
+    if (parsed.data.institutionId) {
+      await assertInstitutionAccessible(parsed.data.institutionId, {
+        tenantId: req.session.tenantId!,
+        userId: req.session.userId!,
+        role: req.session.role!,
+      });
+    }
 
-    const [connection] = await db
-      .select()
-      .from(emailConnections)
-      .where(eq(emailConnections.id, statement.emailConnectionId));
-    if (!connection) return res.status(404).json({ error: "Gmail connection no longer exists" });
-
-    const accessToken = await getValidAccessToken(connection);
-    const buffer = await getGmailAttachment(
-      accessToken,
-      statement.providerMessageId,
-      statement.providerAttachmentId!
-    );
-
-    const isCsv = statement.attachmentFilename?.toLowerCase().endsWith(".csv");
-    const invoiceDate = (statement.receivedAt ?? new Date()).toISOString().slice(0, 10);
     let importedInvoiceId: number | null = null;
     let preview: string;
 
-    if (isCsv) {
-      try {
-        const csvParsed = parseInvoiceCsv(buffer.toString("utf-8"));
-        importedInvoiceId = await importParsedCsvInvoice(parsed.data.institutionId, csvParsed);
-        preview = `Imported as invoice ${csvParsed.header.invoiceNumber} (CSV attachment, parsed the same way as a manual upload).`;
-      } catch (err) {
-        if (err instanceof CsvParseError) {
-          preview = `Could not parse the CSV attachment: ${err.message}. Download the original and upload it manually.`;
-        } else {
-          throw err;
-        }
-      }
+    if (statement.documentKind === "unknown") {
+      // No import pipeline to try — skip the Gmail round-trip entirely, this is
+      // just an acknowledgement so the email drops out of the pending queue.
+      preview =
+        "Unrecognized document type — download it and import manually from the Students, Payroll, or accounting pages.";
     } else {
-      const text = await extractPdfText(buffer);
-      const pdfParsed = parseStatementText(text);
-      preview = summarizeForPreview(pdfParsed);
+      const [connection] = await db
+        .select()
+        .from(emailConnections)
+        .where(eq(emailConnections.id, statement.emailConnectionId));
+      if (!connection) return res.status(404).json({ error: "Gmail connection no longer exists" });
 
-      if (pdfParsed.confidence !== "unparsed") {
-        const invoiceNumber = `EMAIL-${statement.id}`;
-        const lines =
-          pdfParsed.lines.length > 0
-            ? pdfParsed.lines
-            : [{ reference: null, description: "Statement total (see original attachment)", amount: pdfParsed.totalAmount! }];
-        const totalAmount = pdfParsed.totalAmount ?? lines.reduce((s, l) => s + l.amount, 0);
-        importedInvoiceId = await importParsedPdfStatement({
-          institutionId: parsed.data.institutionId,
-          invoiceNumber,
-          invoiceDate,
-          dueDate: invoiceDate,
-          lines,
-          totalAmount,
-        });
+      const accessToken = await getValidAccessToken(connection);
+      const buffer = await getGmailAttachment(
+        accessToken,
+        statement.providerMessageId,
+        statement.providerAttachmentId!
+      );
+
+      if (statement.documentKind === "student_roster" || statement.documentKind === "employee_roster") {
+        try {
+          preview = await importRosterAttachment(
+            statement,
+            buffer,
+            req.session.tenantId!,
+            parsed.data.institutionId
+          );
+        } catch (err) {
+          if (err instanceof UnsupportedRosterFileError) {
+            preview = `Could not parse this attachment: ${err.message}. Download the original and import it manually.`;
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        const isCsv = statement.attachmentFilename?.toLowerCase().endsWith(".csv");
+        const invoiceDate = (statement.receivedAt ?? new Date()).toISOString().slice(0, 10);
+
+        if (isCsv) {
+          try {
+            const csvParsed = parseInvoiceCsv(buffer.toString("utf-8"));
+            importedInvoiceId = await importParsedCsvInvoice(parsed.data.institutionId!, csvParsed);
+            preview = `Imported as invoice ${csvParsed.header.invoiceNumber} (CSV attachment, parsed the same way as a manual upload).`;
+          } catch (err) {
+            if (err instanceof CsvParseError) {
+              preview = `Could not parse the CSV attachment: ${err.message}. Download the original and upload it manually.`;
+            } else {
+              throw err;
+            }
+          }
+        } else {
+          const text = await extractPdfText(buffer);
+          const pdfParsed = parseStatementText(text);
+          preview = summarizeForPreview(pdfParsed);
+
+          if (pdfParsed.confidence !== "unparsed") {
+            const invoiceNumber = `EMAIL-${statement.id}`;
+            const lines =
+              pdfParsed.lines.length > 0
+                ? pdfParsed.lines
+                : [{ reference: null, description: "Statement total (see original attachment)", amount: pdfParsed.totalAmount! }];
+            const totalAmount = pdfParsed.totalAmount ?? lines.reduce((s, l) => s + l.amount, 0);
+            importedInvoiceId = await importParsedPdfStatement({
+              institutionId: parsed.data.institutionId!,
+              invoiceNumber,
+              invoiceDate,
+              dueDate: invoiceDate,
+              lines,
+              totalAmount,
+            });
+          }
+        }
       }
     }
 
@@ -407,4 +562,81 @@ emailIntegrationsRouter.post("/detected/:id/reject", async (req, res) => {
     .set({ status: "rejected", reviewedByUserId: req.session.userId!, reviewedAt: new Date() })
     .where(eq(detectedStatements.id, statement.id));
   res.json({ ok: true });
+});
+
+const sendSchema = z.object({
+  to: z.string().email(),
+  subject: z.string().min(1).max(200),
+  bodyText: z.string().min(1).max(5000),
+});
+
+/**
+ * Sends a document (e.g. an outstanding-balance report or payslip PDF) from
+ * the tenant's connected Gmail account, with an optional single attachment.
+ * Every send is logged to sentEmails for an audit trail.
+ */
+emailIntegrationsRouter.post("/send", outboundUpload.single("attachment"), async (req, res, next) => {
+  try {
+    const parsed = sendSchema.safeParse({
+      to: req.body.to,
+      subject: req.body.subject,
+      bodyText: req.body.bodyText,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+
+    const [connection] = await db
+      .select()
+      .from(emailConnections)
+      .where(
+        and(eq(emailConnections.tenantId, req.session.tenantId!), eq(emailConnections.provider, "gmail"))
+      );
+    if (!connection) return res.status(404).json({ error: "Gmail is not connected" });
+
+    const accessToken = await getValidAccessToken(connection);
+    let sent: { id: string };
+    try {
+      sent = await sendGmailMessage(accessToken, {
+        to: parsed.data.to,
+        subject: parsed.data.subject,
+        bodyText: parsed.data.bodyText,
+        attachment: req.file
+          ? { filename: req.file.originalname, mimeType: req.file.mimetype, content: req.file.buffer }
+          : undefined,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("403") || message.toLowerCase().includes("insufficient")) {
+        return res.status(400).json({
+          error:
+            "Gmail hasn't granted sending permission for this connection yet — disconnect and reconnect Gmail to allow sending.",
+        });
+      }
+      throw err;
+    }
+
+    await db.insert(sentEmails).values({
+      tenantId: req.session.tenantId!,
+      emailConnectionId: connection.id,
+      sentByUserId: req.session.userId!,
+      toAddress: parsed.data.to,
+      subject: parsed.data.subject,
+      attachmentFilename: req.file?.originalname ?? null,
+      providerMessageId: sent.id,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+emailIntegrationsRouter.get("/sent", async (req, res) => {
+  const rows = await db
+    .select()
+    .from(sentEmails)
+    .where(eq(sentEmails.tenantId, req.session.tenantId!))
+    .orderBy(desc(sentEmails.createdAt));
+  res.json(rows);
 });
