@@ -42,6 +42,17 @@ export function Billing() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    // Carries the plan picked at registration through to checkout, so the
+    // right card is pre-selected instead of making them choose again.
+    const requestedPlan = searchParams.get("plan");
+    if (requestedPlan === "monthly" || requestedPlan === "annual") {
+      setPlan(requestedPlan);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function startCheckout() {
     setError(null);
     setLoading("checkout");

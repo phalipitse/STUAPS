@@ -6,6 +6,14 @@ import { PasswordInput } from "../components/PasswordInput";
 
 type Channel = "email" | "sms" | "both";
 type Step = "details" | "otp";
+type PlanChoice = "trial" | "monthly" | "annual";
+
+const MONTHLY_PRICE = 750;
+const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * 12 * 0.9); // 12 x R750, less 10% = R8,100
+
+function formatRand(amount: number) {
+  return `R${amount.toLocaleString("en-ZA")}`;
+}
 
 export function Register() {
   const { setSession } = useAuth();
@@ -24,6 +32,7 @@ export function Register() {
     username: "",
     password: "",
   });
+  const [plan, setPlan] = useState<PlanChoice>("trial");
   const [registrationToken, setRegistrationToken] = useState("");
   const [code, setCode] = useState("");
 
@@ -56,7 +65,10 @@ export function Register() {
         tenant: Parameters<typeof setSession>[1];
       }>("/register/verify", { registrationToken, code });
       setSession(res.user, res.tenant);
-      navigate("/");
+      // Every account still starts on the 14-day free trial (no card collected
+      // here) — picking a paid plan just carries that choice into Billing so
+      // checkout is pre-selected instead of making them pick again.
+      navigate(plan === "trial" ? "/" : `/billing?plan=${plan}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Verification failed");
     } finally {
@@ -105,6 +117,41 @@ export function Register() {
               Province
               <input value={form.province} onChange={(e) => update("province", e.target.value)} />
             </label>
+
+            <p className="muted small" style={{ marginBottom: 4 }}>
+              Choose a plan — you can always change this later from Billing.
+            </p>
+            <div className="plan-row">
+              <button
+                type="button"
+                className={`plan-card${plan === "trial" ? " plan-card-selected" : ""}`}
+                onClick={() => setPlan("trial")}
+              >
+                <span className="plan-name">Free trial</span>
+                <span className="plan-price">14 days</span>
+                <span className="plan-period">no card required</span>
+              </button>
+              <button
+                type="button"
+                className={`plan-card${plan === "monthly" ? " plan-card-selected" : ""}`}
+                onClick={() => setPlan("monthly")}
+              >
+                <span className="plan-name">Monthly</span>
+                <span className="plan-price">{formatRand(MONTHLY_PRICE)}</span>
+                <span className="plan-period">per month</span>
+              </button>
+              <button
+                type="button"
+                className={`plan-card${plan === "annual" ? " plan-card-selected" : ""}`}
+                onClick={() => setPlan("annual")}
+              >
+                <span className="plan-badge">Save 10%</span>
+                <span className="plan-name">Annual</span>
+                <span className="plan-price">{formatRand(ANNUAL_PRICE)}</span>
+                <span className="plan-period">per year</span>
+              </button>
+            </div>
+
             <label>
               Send verification code via
               <select value={form.channel} onChange={(e) => update("channel", e.target.value as Channel)}>

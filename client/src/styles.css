@@ -720,6 +720,19 @@ button {
   box-shadow: var(--shadow-lift);
 }
 
+/* .auth-card button {...} is more specific than .plan-card alone — restore
+   the plan card's own look when it's used inside the register form. */
+.auth-card .plan-card {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 400;
+  margin-top: 0;
+}
+
+.auth-card .plan-card-selected {
+  border-color: var(--color-accent);
+}
+
 .plan-badge {
   position: absolute;
   top: -0.6rem;
@@ -787,6 +800,14 @@ button {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.45rem 1rem;
+}
+
+.landing-nav-register {
+  background: var(--color-accent);
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  font-weight: 600;
 }
 
 .landing-hero {
