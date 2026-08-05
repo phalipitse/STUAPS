@@ -73,9 +73,45 @@ export const tenants = pgTable("tenants", {
   // Paystack checkout metadata once the base subscription activates. Determines
   // which of the two premium add-on prices applies (R200/mo vs R150/mo extra).
   billingPlan: varchar("billing_plan", { length: 16 }),
+  // Saved card authorization from the tenant's last successful charge. Needed to
+  // bill per-student overage off-session at renewal — a Paystack subscription is
+  // locked to its plan's fixed amount, so the variable part has to be charged
+  // separately against this authorization.
+  paystackAuthorizationCode: varchar("paystack_authorization_code", { length: 255 }),
   isSuperAdminTenant: boolean("is_super_admin_tenant").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * One row per billing period in which we charged a tenant for students above
+ * the included allowance. The unique index on (tenant, period) is what keeps
+ * charging idempotent — Paystack retries webhooks, and a renewal can surface as
+ * more than one event, so the insert is what decides whether a charge happens.
+ */
+export const billingUsageCharges = pgTable(
+  "billing_usage_charges",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    periodStart: date("period_start").notNull(),
+    plan: varchar("plan", { length: 16 }).notNull(),
+    activeStudents: integer("active_students").notNull(),
+    billableExtraStudents: integer("billable_extra_students").notNull(),
+    amountRand: numeric("amount_rand", { precision: 12, scale: 2 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    paystackReference: varchar("paystack_reference", { length: 255 }),
+    failureReason: text("failure_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantPeriodUnique: uniqueIndex("billing_usage_charges_tenant_period_unique").on(
+      t.tenantId,
+      t.periodStart
+    ),
+  })
+);
 
 export const users = pgTable(
   "users",
