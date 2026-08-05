@@ -177,6 +177,19 @@ export const properties = pgTable("properties", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Accommodation providers are required to have pest control done three times a
+// year, so a treatment stays current for four months from the date it was done.
+export const pestControlTreatments = pgTable("pest_control_treatments", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  treatedOn: date("treated_on").notNull(),
+  companyName: varchar("company_name", { length: 255 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------------------
 // Students, invoices, line items
 // ---------------------------------------------------------------------------
@@ -440,10 +453,18 @@ export const institutionsRelations = relations(institutions, ({ one, many }) => 
   invoices: many(invoices),
 }));
 
-export const propertiesRelations = relations(properties, ({ one }) => ({
+export const propertiesRelations = relations(properties, ({ one, many }) => ({
   institution: one(institutions, {
     fields: [properties.institutionId],
     references: [institutions.id],
+  }),
+  pestControlTreatments: many(pestControlTreatments),
+}));
+
+export const pestControlTreatmentsRelations = relations(pestControlTreatments, ({ one }) => ({
+  property: one(properties, {
+    fields: [pestControlTreatments.propertyId],
+    references: [properties.id],
   }),
 }));
 

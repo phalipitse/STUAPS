@@ -77,6 +77,7 @@ export function Layout() {
             <NavLink to="/email-inbox">Email inbox</NavLink>
             <NavLink to="/institutions">Institutions</NavLink>
             <NavLink to="/properties">Properties</NavLink>
+            <NavLink to="/pest-control">Pest control</NavLink>
             {user?.role === "admin" && <NavLink to="/team">Team</NavLink>}
             {user?.role === "admin" && <NavLink to="/financial-statements">Financial statements</NavLink>}
             {user?.role === "admin" && <NavLink to="/payroll">Payroll</NavLink>}
@@ -130,6 +131,7 @@ export function Layout() {
                 <NavLink to="/students">Students</NavLink>
                 <NavLink to="/institutions">Institutions</NavLink>
                 <NavLink to="/properties">Properties</NavLink>
+                <NavLink to="/pest-control">Pest control</NavLink>
                 {user?.role === "admin" && <NavLink to="/team">Team</NavLink>}
                 {user?.role === "admin" && (
                   <NavLink to="/financial-statements">Financial statements</NavLink>
