@@ -116,6 +116,35 @@ export async function verifyTransaction(reference: string): Promise<VerifyTransa
   );
 }
 
+interface ChargeAuthorizationResult {
+  status: "success" | "failed" | "abandoned" | string;
+  reference: string;
+  gateway_response?: string;
+}
+
+/**
+ * Charges a saved card off-session. Used for the per-student overage, which
+ * can't ride on the subscription itself — a Paystack plan bills a fixed amount,
+ * so anything variable has to be a separate transaction against the
+ * authorization kept from the tenant's last successful charge.
+ */
+export async function chargeAuthorization(params: {
+  email: string;
+  amountRand: number;
+  authorizationCode: string;
+  reference: string;
+  metadata: Record<string, string>;
+}): Promise<ChargeAuthorizationResult> {
+  return paystackRequest<ChargeAuthorizationResult>("POST", "/transaction/charge_authorization", {
+    email: params.email,
+    amount: Math.round(params.amountRand * 100),
+    currency: "ZAR",
+    authorization_code: params.authorizationCode,
+    reference: params.reference,
+    metadata: params.metadata,
+  });
+}
+
 interface PaystackSubscription {
   subscription_code: string;
   plan: { plan_code: string };

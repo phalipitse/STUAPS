@@ -10,7 +10,29 @@ const MONTHLY_PRICE = 750;
 const ANNUAL_PRICE = Math.round(MONTHLY_PRICE * 12 * 0.9); // 12 x R750, less 10% = R8,100
 
 function formatRand(amount: number) {
-  return `R${amount.toLocaleString("en-ZA")}`;
+  return `R${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+interface UsageCharge {
+  id: number;
+  periodStart: string;
+  activeStudents: number;
+  billableExtraStudents: number;
+  amountRand: string;
+  status: string;
+}
+
+interface Usage {
+  plan: Plan;
+  activeStudents: number;
+  includedStudents: number;
+  billableExtraStudents: number;
+  baseRand: number;
+  overageRand: number;
+  totalRand: number;
+  overageRatePerStudent: number;
+  activeWindowDays: number;
+  history: UsageCharge[];
 }
 
 export function Billing() {
@@ -22,6 +44,11 @@ export function Billing() {
   const [paymentNotice, setPaymentNotice] = useState<{ status: string; kind: string | null } | null>(
     null
   );
+  const [usage, setUsage] = useState<Usage | null>(null);
+
+  useEffect(() => {
+    api.get<Usage>("/billing/usage").then(setUsage).catch(() => setUsage(null));
+  }, []);
 
   const daysLeft = trialDaysLeft(tenant);
   const locked = isLocked(tenant) && paymentNotice?.status !== "success";
@@ -141,7 +168,7 @@ export function Billing() {
           >
             <span className="plan-name">Monthly</span>
             <span className="plan-price">{formatRand(MONTHLY_PRICE)}</span>
-            <span className="plan-period">per month</span>
+            <span className="plan-period">per month — up to 50 students</span>
           </button>
           <button
             type="button"
@@ -152,7 +179,7 @@ export function Billing() {
             <span className="plan-name">Annual</span>
             <span className="plan-price">{formatRand(ANNUAL_PRICE)}</span>
             <span className="plan-period">
-              per year — {formatRand(Math.round(ANNUAL_PRICE / 12))}/mo equivalent
+              per year — up to 50 students
             </span>
           </button>
         </div>
@@ -174,6 +201,76 @@ export function Billing() {
           </button>
         )}
       </div>
+
+      {!locked && usage && (
+        <>
+          <h2>Your usage</h2>
+          <div className="kpi-row">
+            <div className="kpi-tile">
+              <span className="kpi-label">Students billed</span>
+              <span className="kpi-value">{usage.activeStudents}</span>
+            </div>
+            <div className="kpi-tile">
+              <span className="kpi-label">Included</span>
+              <span className="kpi-value">{usage.includedStudents}</span>
+            </div>
+            <div className="kpi-tile">
+              <span className="kpi-label">Above allowance</span>
+              <span className="kpi-value">{usage.billableExtraStudents}</span>
+            </div>
+            <div className={usage.overageRand > 0 ? "kpi-tile kpi-outstanding" : "kpi-tile"}>
+              <span className="kpi-label">
+                Next {usage.plan === "annual" ? "yearly" : "monthly"} bill
+              </span>
+              <span className="kpi-value">{formatRand(usage.totalRand)}</span>
+            </div>
+          </div>
+          <p className="muted small">
+            Counted from students you've invoiced in the last {usage.activeWindowDays} days — not
+            your whole roster, so students who have left stop counting.{" "}
+            {usage.billableExtraStudents > 0
+              ? `${formatRand(usage.baseRand)} base + ${usage.billableExtraStudents} × ${formatRand(
+                  usage.overageRatePerStudent
+                )} = ${formatRand(usage.totalRand)}.`
+              : `The first ${usage.includedStudents} are included in your ${formatRand(
+                  usage.baseRand
+                )} plan.`}
+          </p>
+
+          {usage.history.length > 0 && (
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Period</th>
+                    <th>Students</th>
+                    <th>Above allowance</th>
+                    <th>Extra charged</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usage.history.map((h) => (
+                    <tr key={h.id}>
+                      <td>{h.periodStart}</td>
+                      <td>{h.activeStudents}</td>
+                      <td>{h.billableExtraStudents}</td>
+                      <td>{formatRand(Number(h.amountRand))}</td>
+                      <td>
+                        <span
+                          className={`status-pill status-${h.status === "success" ? "paid" : "outstanding"}`}
+                        >
+                          {h.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
 
       {!locked && (
         <>

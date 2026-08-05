@@ -19,6 +19,8 @@ import {
   ADDON_AMOUNTS_ZAR,
 } from "../lib/paystack.js";
 import type { BillingPlan } from "../lib/paystack.js";
+import { currentBillFor, chargeOverageForPeriod, recentUsageCharges } from "../lib/usageBilling.js";
+import { INCLUDED_STUDENTS, OVERAGE_RATE_ZAR, ACTIVE_WINDOW_DAYS } from "../lib/metering.js";
 
 export const billingRouter = Router();
 
@@ -104,6 +106,30 @@ billingRouter.get("/verify", requireAuth, async (req, res, next) => {
   }
 });
 
+/**
+ * What the tenant is currently metered at — how many students they've invoiced
+ * inside the active window, and what that makes their next bill. Read-only; the
+ * actual charge happens at renewal.
+ */
+billingRouter.get("/usage", requireAuth, async (req, res, next) => {
+  try {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, req.session.tenantId!));
+    if (!tenant) return res.status(404).json({ error: "Tenant not found" });
+
+    const bill = await currentBillFor(tenant);
+    res.json({
+      ...bill,
+      plan: tenant.billingPlan === "annual" ? "annual" : "monthly",
+      overageRatePerStudent: OVERAGE_RATE_ZAR[tenant.billingPlan === "annual" ? "annual" : "monthly"],
+      includedStudents: INCLUDED_STUDENTS,
+      activeWindowDays: ACTIVE_WINDOW_DAYS,
+      history: await recentUsageCharges(tenant.id),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** Paystack's closest equivalent to a hosted billing portal — a link to update the card or cancel. */
 billingRouter.get("/portal", requireAuth, requireRole("admin"), async (req, res, next) => {
   try {
@@ -147,6 +173,7 @@ interface PaystackChargeSuccessData {
   customer?: { customer_code?: string } | null;
   plan?: string | null;
   plan_object?: { plan_code?: string } | null;
+  authorization?: { authorization_code?: string; reusable?: boolean } | null;
 }
 
 async function handleChargeSuccess(data: PaystackChargeSuccessData) {
@@ -164,6 +191,24 @@ async function handleChargeSuccess(data: PaystackChargeSuccessData) {
 
   const kind = data.metadata?.kind ?? inferKindFromPlanCode(planCode);
   if (!kind) return;
+
+  // Keep the card authorization from any successful charge — it's what lets the
+  // variable per-student amount be charged off-session at the next renewal.
+  // Only reusable authorizations are worth storing; one-time ones can't be
+  // charged again.
+  const authorizationCode = data.authorization?.reusable
+    ? data.authorization.authorization_code
+    : undefined;
+  if (authorizationCode && authorizationCode !== tenant.paystackAuthorizationCode) {
+    await db
+      .update(tenants)
+      .set({ paystackAuthorizationCode: authorizationCode })
+      .where(eq(tenants.id, tenant.id));
+  }
+
+  // The usage charge is itself a charge.success once it settles — handling it
+  // here would recurse straight back into charging.
+  if (kind === "usage") return;
 
   if (kind === "addon") {
     await db
@@ -187,6 +232,21 @@ async function handleChargeSuccess(data: PaystackChargeSuccessData) {
       .where(eq(tenants.id, tenant.id));
     if (customerCode && !tenant.paystackSubscriptionCode) {
       await linkSubscriptionCode(tenant.id, customerCode, "base");
+    }
+
+    // The base plan has just been paid for this period, so bill any students
+    // above the allowance now. Charging is idempotent per period, so the first
+    // subscription charge and every later renewal both land here safely.
+    try {
+      const result = await chargeOverageForPeriod(tenant.id);
+      if (result.reason && result.reason !== "no students over the allowance") {
+        console.warn(`Usage charge skipped for tenant ${tenant.id}: ${result.reason}`);
+      }
+    } catch (err) {
+      // A failed overage charge must not fail the webhook — the base
+      // subscription really did succeed, and losing that would leave the tenant
+      // locked out over an unpaid extra.
+      console.error(`Usage charge errored for tenant ${tenant.id}:`, err);
     }
   }
 }
