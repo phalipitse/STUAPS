@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useInstitutions } from "../institutions/InstitutionContext";
 import { api } from "../lib/api";
 import { formatRand } from "../lib/format";
@@ -49,6 +50,7 @@ export function Outstanding() {
             <th>Surname</th>
             <th>Outstanding invoices</th>
             <th>Total owed</th>
+            <th className="no-print">Letter</th>
           </tr>
         </thead>
         <tbody>
@@ -63,11 +65,16 @@ export function Outstanding() {
                   .join(", ")}
               </td>
               <td>{formatRand(s.totalOutstanding)}</td>
+              <td className="no-print">
+                <Link to={`/outstanding/demand-letter/${s.studentId}?institutionId=${selectedId}`}>
+                  Request payment
+                </Link>
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5} className="muted">
+              <td colSpan={6} className="muted">
                 Nothing outstanding.
               </td>
             </tr>

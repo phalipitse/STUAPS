@@ -15,6 +15,7 @@ import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
 import { Students } from "./pages/Students";
 import { Outstanding } from "./pages/Outstanding";
+import { DemandLetter } from "./pages/DemandLetter";
 import { Admin } from "./pages/Admin";
 import { Team } from "./pages/Team";
 import { Billing } from "./pages/Billing";
@@ -62,6 +63,7 @@ export function App() {
         <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="students" element={<Students />} />
         <Route path="outstanding" element={<Outstanding />} />
+        <Route path="outstanding/demand-letter/:studentId" element={<DemandLetter />} />
         <Route path="admin" element={<Admin />} />
         <Route path="team" element={<Team />} />
         <Route path="billing" element={<Billing />} />

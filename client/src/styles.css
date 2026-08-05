@@ -1040,9 +1040,38 @@ button {
   }
 }
 
+/* Demand letter */
+
+.letter {
+  max-width: 640px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 2.5rem;
+  line-height: 1.6;
+}
+
+.letter-date {
+  color: var(--color-muted);
+}
+
+.letter-table {
+  margin: 1.5rem 0;
+}
+
+.letter-signoff {
+  margin-top: 2rem;
+}
+
 /* Print */
 
 @media print {
+  .letter {
+    border: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
   .no-print,
   .app-header,
   .trial-banner,
