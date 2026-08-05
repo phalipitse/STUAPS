@@ -563,21 +563,25 @@ button {
 .status-trial,
 .status-past_due,
 .status-rejected,
-.status-import_failed {
+.status-import_failed,
+.status-pest-overdue,
+.status-pest-never {
   background: var(--color-outstanding-bg);
   color: var(--color-outstanding-text);
 }
 
 .status-paid,
 .status-active,
-.status-approved {
+.status-approved,
+.status-pest-ok {
   background: var(--color-paid-bg);
   color: var(--color-paid-text);
 }
 
 .status-partial,
 .status-cancelled,
-.status-pending {
+.status-pending,
+.status-pest-due_soon {
   background: var(--color-header-bg);
   color: var(--color-text);
 }

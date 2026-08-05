@@ -11,6 +11,7 @@ import { Landing } from "./pages/Landing";
 import { Dashboard } from "./pages/Dashboard";
 import { Institutions } from "./pages/Institutions";
 import { Properties } from "./pages/Properties";
+import { PestControl } from "./pages/PestControl";
 import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
 import { Students } from "./pages/Students";
@@ -58,6 +59,7 @@ export function App() {
         <Route index element={<Dashboard />} />
         <Route path="institutions" element={<Institutions />} />
         <Route path="properties" element={<Properties />} />
+        <Route path="pest-control" element={<PestControl />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="students" element={<Students />} />

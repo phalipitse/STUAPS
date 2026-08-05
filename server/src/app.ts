@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth.js";
 import { registerRouter } from "./routes/register.js";
 import { institutionsRouter } from "./routes/institutions.js";
 import { propertiesRouter } from "./routes/properties.js";
+import { pestControlRouter } from "./routes/pestControl.js";
 import { studentsRouter } from "./routes/students.js";
 import { invoicesRouter } from "./routes/invoices.js";
 import { reportsRouter } from "./routes/reports.js";
@@ -74,6 +75,7 @@ export function createApp() {
   app.use("/api/waitlist", waitlistRouter);
   app.use("/api/institutions", institutionsRouter);
   app.use("/api/properties", propertiesRouter);
+  app.use("/api/pest-control", pestControlRouter);
   app.use("/api/students", studentsRouter);
   app.use("/api/invoices", invoicesRouter);
   app.use("/api/reports", reportsRouter);
