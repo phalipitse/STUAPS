@@ -141,7 +141,7 @@ export function Billing() {
           >
             <span className="plan-name">Monthly</span>
             <span className="plan-price">{formatRand(MONTHLY_PRICE)}</span>
-            <span className="plan-period">per month</span>
+            <span className="plan-period">per month — up to 50 students</span>
           </button>
           <button
             type="button"
@@ -152,7 +152,8 @@ export function Billing() {
             <span className="plan-name">Annual</span>
             <span className="plan-price">{formatRand(ANNUAL_PRICE)}</span>
             <span className="plan-period">
-              per year — {formatRand(Math.round(ANNUAL_PRICE / 12))}/mo equivalent
+              per year — {formatRand(Math.round(ANNUAL_PRICE / 12))}/mo equivalent, up to 50
+              students
             </span>
           </button>
         </div>
