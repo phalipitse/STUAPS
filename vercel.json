@@ -19,5 +19,15 @@
       "source": "/manifest.webmanifest",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/pest-control-check",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/billing-overage",
+      "schedule": "0 6 1 * *"
+    }
   ]
 }

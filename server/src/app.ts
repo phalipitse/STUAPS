@@ -19,6 +19,7 @@ import { emailIntegrationsRouter } from "./routes/emailIntegrations.js";
 import { financialStatementsRouter } from "./routes/financialStatements.js";
 import { payrollRouter } from "./routes/payroll.js";
 import { waitlistRouter } from "./routes/waitlist.js";
+import { cronRouter } from "./routes/cron.js";
 
 const PgSession = connectPgSimple(session);
 
@@ -85,6 +86,7 @@ export function createApp() {
   app.use("/api/email-integrations", emailIntegrationsRouter);
   app.use("/api/financial-statements", financialStatementsRouter);
   app.use("/api/payroll", payrollRouter);
+  app.use("/api/cron", cronRouter);
 
   // Centralized error handler — keeps ForbiddenError/CsvParseError messages
   // out of routes and off the client's back for anything unexpected.
