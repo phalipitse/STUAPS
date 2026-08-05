@@ -58,14 +58,12 @@ export function Landing() {
       </header>
 
       <section className="landing-hero">
-        <h1>
-          Stop reconciling student invoices by hand.
-        </h1>
+        <h1>Know exactly which students owe you — and get it in writing.</h1>
         <p className="landing-hero-sub">
-          STUAPS is a student accommodation management package that
-          reconciles funder invoices against your student roster
-          automatically, so you always know exactly who owes what — plus
-          properties, payroll, and financial reporting in one place.
+          When NSFAS pays a student directly instead of paying you, the money
+          doesn't stop being yours. STUAPS reconciles every funder invoice
+          against your roster, shows you who still owes what, and prints a
+          dated request-for-payment letter you can put in that student's hand.
         </p>
         <div className="landing-hero-cta">
           <Link to="/register" className="landing-btn landing-btn-primary">
@@ -78,57 +76,71 @@ export function Landing() {
         <p className="landing-hero-note">No card required to start.</p>
       </section>
 
+      <section className="landing-section landing-section-alt">
+        <h2>One recovered student pays for the year</h2>
+        <p className="landing-section-sub">
+          A student place runs around R4,600 a month. STUAPS starts at R750 a
+          month — roughly 15% of what a single student pays you. Recover two
+          months from one student and the year is covered; everything after
+          that is money you weren't getting back.
+        </p>
+      </section>
+
       <section className="landing-section" id="features">
-        <h2>Everything reconciliation touches, in one package</h2>
+        <h2>Chase the money, not the paperwork</h2>
         <div className="landing-feature-grid">
           <div className="landing-feature-card">
-            <h3>Invoice reconciliation</h3>
+            <h3>See who owes you, today</h3>
             <p>
-              Upload a funder's invoice CSV and STUAPS matches it against
-              your live student roster automatically — outstanding, partial,
-              and paid, tracked per invoice.
+              Upload the funder's invoice and STUAPS matches every line against
+              your roster automatically. No spreadsheet, no guesswork — a live
+              list of every student still short, and by how much.
             </p>
           </div>
           <div className="landing-feature-card">
-            <h3>Students &amp; properties</h3>
+            <h3>Put the request in writing</h3>
             <p>
-              A single roster across every institution and residence, with a
-              live "who owes what" report you can hand to anyone on your
-              team.
+              One click prints a dated, itemised request-for-payment letter for
+              any student who owes you — their name, student number, and every
+              outstanding invoice. Proof you asked, on the day you asked.
             </p>
           </div>
           <div className="landing-feature-card">
-            <h3>Payroll &amp; financial statements</h3>
+            <h3>Know your real numbers</h3>
             <p>
-              Gross-to-net payslips, income statements, cash flow and
-              balance sheet — computed straight from your real invoice and
-              expense data.
+              Income statement, cash flow, and balance sheet built from your
+              actual invoices and expenses — so when a funder or a bank asks
+              what you're owed, you have the answer already.
             </p>
           </div>
           <div className="landing-feature-card">
-            <h3>Install it like an app</h3>
+            <h3>Run the rest of the business</h3>
             <p>
-              Available on Google Play and Huawei AppGallery, or install
-              straight from the browser — no separate mobile app to keep in
-              sync.
+              Properties, staff payroll and payslips, and pest control due
+              dates — the compliance and admin that comes with every residence,
+              tracked in the same place.
             </p>
           </div>
         </div>
       </section>
 
       <section className="landing-section landing-section-alt" id="pricing">
-        <h2>Simple, self-serve pricing</h2>
+        <h2>You pay for the students you house</h2>
         <div className="landing-pricing-grid">
           <div className="landing-price-card">
             <span className="landing-price-label">Monthly</span>
             <span className="landing-price-value">R750</span>
-            <span className="landing-price-period">per month</span>
+            <span className="landing-price-period">
+              per month — up to 50 students, then R2.50 per extra student
+            </span>
           </div>
           <div className="landing-price-card landing-price-featured">
             <span className="landing-price-badge">Save 10%</span>
             <span className="landing-price-label">Annual</span>
             <span className="landing-price-value">R8,100</span>
-            <span className="landing-price-period">per year</span>
+            <span className="landing-price-period">
+              per year — up to 50 students, then R2.50 per extra student
+            </span>
           </div>
           <div className="landing-price-card">
             <span className="landing-price-label">Premium add-on</span>
@@ -137,16 +149,18 @@ export function Landing() {
           </div>
         </div>
         <p className="landing-pricing-note">
-          Every plan starts with a 14-day free trial. No card required.
+          No jump at 50 — a 60-student provider pays R775, a 100-student
+          provider R875. Every plan starts with a 14-day free trial, no card
+          required.
         </p>
       </section>
 
       <section className="landing-section" id="waitlist">
-        <h2>Not ready yet? Join the waitlist.</h2>
+        <h2>Outside South Africa? Join the waitlist.</h2>
         <p className="landing-section-sub">
-          STUAPS is live today for providers in South Africa, with
-          expansion across Africa underway. Tell us where you're based and
-          we'll reach out as soon as it's available for you.
+          STUAPS is live today for providers in South Africa, with expansion
+          across Africa underway. Tell us where you're based and we'll reach
+          out as soon as it's available for you.
         </p>
 
         {submitted ? (
