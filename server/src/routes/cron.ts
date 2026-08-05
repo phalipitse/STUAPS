@@ -38,7 +38,7 @@ cronRouter.post("/pest-control-check", async (req, res, next) => {
         if (status === "overdue") {
           overdue.push(prop);
         }
-      } else if (!prop.lastPestControlDate) {
+      } else {
         // Never treated
         overdue.push(prop);
       }
