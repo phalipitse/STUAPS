@@ -54,6 +54,9 @@ export function Landing() {
           <Link to="/login" className="landing-nav-signin">
             Sign in
           </Link>
+          <Link to="/register" className="landing-nav-register">
+            Register
+          </Link>
         </nav>
       </header>
 
