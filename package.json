@@ -1,5 +1,7 @@
 {
-  "name": "student-accommodation-recon",
+  "name": "stuaps",
+  "version": "1.0.0",
+  "description": "Invoice reconciliation, students, properties, payroll and financial statements for student accommodation providers.",
   "private": true,
   "type": "module",
   "workspaces": [

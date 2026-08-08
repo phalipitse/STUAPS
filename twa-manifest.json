@@ -1,0 +1,61 @@
+{
+  "host_url": "https://stuaps.vercel.app",
+  "package_id": "com.stuaps.app",
+  "app_name": "STUAPS",
+  "app_short_name": "STUAPS",
+  "app_description": "Invoice reconciliation, students, properties, payroll and financial statements for student accommodation providers.",
+  "theme_color": "#1D4ED8",
+  "background_color": "#1D4ED8",
+  "status_bar_color": "#1D4ED8",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait-primary",
+  "icon_url": "https://stuaps.vercel.app/icons/icon-192.png",
+  "maskable_icon_url": "https://stuaps.vercel.app/icons/icon-maskable-512.png",
+  "screenshots": [
+    {
+      "src": "https://stuaps.vercel.app/screenshot-1.png",
+      "sizes": "540x720",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "https://stuaps.vercel.app/screenshot-2.png",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Billing",
+      "short_name": "Billing",
+      "description": "View and manage billing",
+      "url": "/billing?utm_source=shortcut",
+      "icons": [
+        {
+          "src": "https://stuaps.vercel.app/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Outstanding",
+      "short_name": "Outstanding",
+      "description": "View outstanding invoices",
+      "url": "/reports/outstanding?utm_source=shortcut",
+      "icons": [
+        {
+          "src": "https://stuaps.vercel.app/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "share_target": null,
+  "related_applications": [],
+  "prefer_related_applications": false
+}
