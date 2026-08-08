@@ -145,8 +145,8 @@ export function Payroll() {
     return (
       <div className="page">
         <h1>Payroll</h1>
-        <p className="muted">Payroll and payslip tools are part of the Premium add-on.</p>
-        <Link to="/billing">Upgrade to Premium →</Link>
+        <p className="muted">Payroll and payslip tools are part of the Elite add-on.</p>
+        <Link to="/billing">Upgrade to Elite →</Link>
       </div>
     );
   }

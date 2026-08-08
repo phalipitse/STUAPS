@@ -22,7 +22,7 @@ export async function requirePremiumAddon(req: Request, res: Response, next: Nex
   }
 
   res.status(402).json({
-    error: "Financial statements and payroll are part of the Premium add-on.",
+    error: "Financial statements and payroll are part of the Elite add-on.",
     code: "ADDON_REQUIRED",
   });
 }
